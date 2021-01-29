@@ -72,7 +72,7 @@ classdef aoSystem < handle
                                                         
             
             %1/ Science
-            obj.sci = obj.initSource(parms.sci);
+            obj.sci = obj.initSource(parms.sci,parms.atm);
             
             %2/ Telescope
             if ~isfield(parms,'seg')
@@ -88,14 +88,14 @@ classdef aoSystem < handle
             obj.atm = obj.initAtmosphere(parms.atm);
             
             %5/ Guide stars                       
-            obj.nGs = obj.initSource(parms.nGs); % NGSs constellation
+            obj.nGs = obj.initSource(parms.nGs,parms.atm); % NGSs constellation
             if isfield(parms,'lGs')
                  parms.lGs.apertureSize     = parms.tel.D/parms.wfs.nLenslet;
                  parms.lGs.apertureDistance = parms.tel.D;
-                obj.lGs = obj.initSource(parms.lGs); % LGSs constellation
+                obj.lGs = obj.initSource(parms.lGs,parms.atm); % LGSs constellation
             end
             if isfield(parms,'tGs')
-                obj.tGs = obj.initSource(parms.tGs); % NGS for the truth sensor
+                obj.tGs = obj.initSource(parms.tGs,parms.atm); % NGS for the truth sensor
             end
             
             %6/ WFS
@@ -529,7 +529,7 @@ classdef aoSystem < handle
                 zen     = obj.sci(iSrc).zenith;
                 azi     = obj.sci(iSrc).azimuth;
                 wvl     = obj.sci(iSrc).wavelength;
-                tmp(iSrc) = psfStats(psfi,double(obj.tel.pupilLogical),obj.tel.D,zen,azi,wvl,ps,tExp,'flagMoffat',true);
+                tmp(iSrc) = kaspPSFStats(psfi,double(obj.tel.pupilLogical),obj.tel.D,zen,azi,wvl,ps,tExp,'flagMoffat',true);
             end
             obj.psf = tmp;
             
@@ -644,17 +644,18 @@ classdef aoSystem < handle
             
         end
         
-        function sci = initSource(parms)
+        function sci = initSource(parms,parmsAtm)
             
             if ~isempty(parms.x) && ~isempty(parms.y) && isscalar(parms.magnitude)
                 
                 [zenith,azimuth] = utilities.arcsec2polar(parms.x,parms.y);
                 
                 if isfield(parms,'height') && ~isempty(parms.height) && parms.height~=Inf
-                    meanH   = mean(parms.height);
+                    airmass = 1/parmsAtm.zenithAngle;
+                    meanH   = mean(parms.height) * airmass;
                     sci = laserGuideStar(parms.apertureSize,parms.apertureDistance,...
                         meanH,parms.spotFwhm,parms.nPhoton,parms.naProfile,'zenith',zenith,'azimuth',azimuth,'height',...
-                        parms.height,'wavelength',parms.photometry);
+                        parms.height*airmass,'wavelength',parms.photometry);
                 else
                     sci  = source('zenith',zenith,'azimuth',azimuth,...
                         'wavelength',parms.photometry,'magnitude',parms.magnitude);
@@ -740,8 +741,9 @@ classdef aoSystem < handle
         
         function atm = initAtmosphere(parms)
             
-            atm = atmosphere(parms.photometry,parms.r0,mean(parms.L0),'layeredL0',parms.L0,...
-                'fractionnalR0',parms.fractionalR0,'altitude',parms.altitude,...
+            airmass = 1/parms.zenithAngle;
+            atm = atmosphere(parms.photometry,parms.r0*airmass^(-3/5),mean(parms.L0),'layeredL0',parms.L0,...
+                'fractionnalR0',parms.fractionalR0,'altitude',parms.altitude*airmass,...
                 'windSpeed',parms.windSpeed,'windDirection',parms.windDirection);
             
         end
