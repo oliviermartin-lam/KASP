@@ -22,12 +22,12 @@ parm.sci.y                      = 0;                            % Sources x cart
 parm.tel.D                      = 11.25;                        % telescope primary mirror diameter
 parm.tel.obstructionRatio       = 0.2356;                       % central obscuration ratio
 parm.tel.fieldOfViewInArcsec    = 10;                           % fieldOfViewInArcsec
-parm.tel.resolution             = 240;                          % resolution 
+parm.tel.resolution             = 200;                          % resolution 
 parm.tel.samplingTime           = 1e-3;                         % sampling time in sec
 parm.tel.pupilShape             = [];                           % User-defined pupil-shape
 
 %% SEGMENTED PUPIL
-parm.seg.usePupilClass          = false;
+parm.seg.usePupilClass          = true;
 parm.seg.nSides                 = 6;                            % Number of segment sides
 parm.seg.radius                 = 0.9;                          % Segment radius
 parm.seg.resolution             = parm.tel.resolution;         % Segment resolution in pixel
@@ -75,9 +75,9 @@ parm.dm.influenceType           = 'gaussian';                   % type of influe
 
 %% IMAGING CAMERA
 parm.cam.pixelScale             = 9.94;                         % Pixel scale in mas                         
-parm.cam.resolution             = 201;                          % camera resolution                               
+parm.cam.resolution             = 200;                          % camera resolution                               
 parm.cam.clockRate              = 1;                            % clock-rate (default 1)                   
-parm.cam.exposureTime           = 5000;                          % exposure time in time-steps x clockRate                   
+parm.cam.exposureTime           = 1000;                         % exposure time in time-steps x clockRate                   
 parm.cam.startDelay             = 50;                           % transient period for loop to converge in time-steps x clockRate                   
 parm.cam.ron                    = 0;                            % ron in e-                  
 parm.cam.photonNoise            = false;                        % true/false photon noise   
@@ -89,11 +89,9 @@ parm.loopStatus.ho.gain         = 0.5;                          % integrator con
 parm.loopStatus.ho.latency      = 0e-3;                         % loop latency (default tel.samplingTime)
 parm.loopStatus.ho.tomography   = [];                           % tomographic algorithm
 parm.loopStatus.ho.control      = 'integrator';                 % controller
-parm.loopStatus.ho.gainPolc     = 1;                          % POLC control loop gain
+parm.loopStatus.ho.gainPolc     = 1;                            % POLC control loop gain
 %% NCPA
-%ncpaMap                         = mean(fitsread('/run/media/omartin/HDD_OBM/KECK_DATA/CALIBRATION/phasemaps_2013.fits'),3);
-%ncpaMap                         = tools.interpolate(ncpaMap,parm.tel.resolution);
-%parm.ncpa                       = ncpaMap*1.6455e-6/2/pi;           % NCPA map in meter
+parm.ncpa                       = [];                           % NCPA map in meter
 
 
 
