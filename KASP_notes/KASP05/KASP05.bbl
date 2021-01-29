@@ -1,0 +1,21 @@
+\begin{thebibliography}{1}
+
+\bibitem{Flicker2008}
+R~{Flicker}.
+\newblock {PSF reconstruction for Keck AO}.
+\newblock Technical report, 2008.
+
+\bibitem{Gendron1995}
+E.~{Gendron} and P.~{L\'ena}.
+\newblock {Astronomical adaptive optics. II. Experimental results of an
+  optimized modal control.}
+\newblock {\em \aap}, 111:153--+, May 1995.
+
+\bibitem{Veran1997}
+J.-P. {Veran}, F.~{Rigaut}, H.~{Maitre}, and D.~{Rouan}.
+\newblock {Estimation of the adaptive optics long-exposure point-spread
+  function using control loop data.}
+\newblock {\em Journal of the Optical Society of America A}, 14:3057--3069,
+  November 1997.
+
+\end{thebibliography}

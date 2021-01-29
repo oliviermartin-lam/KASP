@@ -1,0 +1,13 @@
+\BOOKMARK [1][-]{section.1}{Purpose}{}% 1
+\BOOKMARK [1][-]{section.2}{The FPP concept}{}% 2
+\BOOKMARK [2][-]{subsection.2.1}{Motivations}{section.2}% 3
+\BOOKMARK [2][-]{subsection.2.2}{PSF model}{section.2}% 4
+\BOOKMARK [3][-]{subsubsection.2.2.1}{Fitting model}{subsection.2.2}% 5
+\BOOKMARK [3][-]{subsubsection.2.2.2}{Aliasing model}{subsection.2.2}% 6
+\BOOKMARK [3][-]{subsubsection.2.2.3}{Anisoplanatism model}{subsection.2.2}% 7
+\BOOKMARK [2][-]{subsection.2.3}{Algorithm description}{section.2}% 8
+\BOOKMARK [1][-]{section.3}{Results on the NRC-HIA Henos testbed}{}% 9
+\BOOKMARK [2][-]{subsection.3.1}{System description}{section.3}% 10
+\BOOKMARK [2][-]{subsection.3.2}{How to use the FocalPlaneProfiler class}{section.3}% 11
+\BOOKMARK [2][-]{subsection.3.3}{FPP results}{section.3}% 12
+\BOOKMARK [1][-]{section.4}{Conclusions}{}% 13

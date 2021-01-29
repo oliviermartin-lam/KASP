@@ -1,0 +1,275 @@
+\documentclass[12pt]{article}
+
+%\renewcommand{\baselinestretch}{1.65}
+\usepackage{amsmath,graphicx,bbm,amssymb}
+\usepackage{txfonts}
+\usepackage{array}
+\usepackage{subfigure}
+\usepackage{caption}
+\usepackage{color}
+\usepackage{tikz}
+\usetikzlibrary{arrows} 
+\usetikzlibrary{shapes.multipart}
+\usetikzlibrary{shapes.misc, positioning}
+\usepackage{float}
+\usepackage{calc}
+\usepackage{multirow}
+\usepackage{fancyhdr}
+\usepackage{colortbl}
+\usepackage[hmargin=1.5cm, top=2cm, bottom=2cm]{geometry}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\newcommand{\procspie}{Proc. SPIE } 
+\newcommand{\pasp}{Publications of the Astronomical Society of the Pacific } 
+\newcommand{\aap}{Astron. \& Astrophys. } 
+\newcommand{\mnras}{M.N.R.A.S } 
+
+\newcommand{\module}[1]{\left\vert #1 \right\vert}
+\newcommand{\norme}[1]{\left\vert\left\vert #1 \right\vert\right\vert}
+\newcommand{\para}[1]{\left(#1\right)}
+\newcommand{\cro}[1]{\left[#1\right]}
+\newcommand{\aver}[1]{\left\langle #1 \right\rangle}
+\newcommand{\bra}[1]{\left\lbrace #1 \right\rbrace}
+\newcommand{\xth}[1]{#1^{\text{th}}}
+\newcommand{\otfdl}{\text{OTF}_\text{DL}}
+
+\newcommand{\rz}{r_0}
+\newcommand{\lz}{L_0}
+\newcommand{\cnh}{C_n^2(h)}
+\newcommand{\nwfs}{\text{n}_\text{wfs}}
+\newcommand{\R}{\boldsymbol{\text{R}}}
+\newcommand{\Mc}{\boldsymbol{\text{M}_c}}
+\newcommand{\thSrc}{\boldsymbol{\theta}_\text{src}}
+\newcommand{\thGs}{\boldsymbol{\theta}_\text{gs}}
+\newcommand{\thNgs}{\boldsymbol{\theta}_\text{ngs}}
+\newcommand{\thLgs}{\boldsymbol{\theta}_\text{lgs}}
+\newcommand{\rbb}{\boldsymbol{r}}
+\newcommand{\rbun}{\boldsymbol{r}_1}
+\newcommand{\rbdeux}{\boldsymbol{r}_2}
+\newcommand{\rhob}{\boldsymbol{\rho}}
+\newcommand{\TTout}{\boldsymbol{\text{TT}}_\text{out}}
+\newcommand{\TTonly}{\boldsymbol{\text{TT}}_\text{only}}
+
+\title{KASP Technical notes \#01:\\ KECK-like AO system end-to-end simulations
+	pipeline coded into OOMAO}
+\author{O. Beltramo-Martin\footnote{olivier.martin@lam.fr}, C.~M. Correia}
+
+% Option to view page numbers
+%\pagestyle{plain} % change to \pagestyle{plain} for page numbers   
+\setcounter{page}{1}
+\fancyhead[LO,LE]{KASP Technical notes \#01}
+\fancyhead[RE,RO]{O. Beltramo-Martin}
+\pagestyle{fancy} 
+\setlength{\parindent}{0cm}
+
+\begin{document}
+
+\maketitle
+
+\rule{\columnwidth}{0.1mm}
+\tableofcontents
+\rule{\columnwidth}{0.1mm}
+\section{Purpose}
+
+KASP, standing for Keck Ao Simulation Pipeline, is designed for providing a end-to-end simulations tools for the Keck adaptive optics system, in the prospects of performing PSF-reconstruction (PSF-R) for a segmented pupil of 10m class. The code is mainly supported by OOMAO (Object-Oriented Matlab Adaptive Optics) coded into Matlab~(\cite{Conan2014OOMAO}), that simulates the electric field propagation through the atmosphere, telescope and adaptive optics system. KASP allows to simulate any AO system in a SCAO/LGSAO/GLAO configuration so far, and will be extended to LTAO, especially in the context of PSF-R with Harmoni on the E-ELT. We describe through this document the main facilities and how to use KASP.
+
+\section{Code architecture}
+\subsection{Main facilities}
+OOMAO is object-oriented and invokes different Matlab classes (source, telescope, atmosphere, dm, wfs …) which are handled for propagating the wave-front through all the system. On top of that, KASP includes additional classes for simulating a AO loop from a parameter file only (as it's done with YAO on Yorick)~:
+\begin{itemize}
+	\item[$\bullet$] \textbf{systemSimulator class}: this class instantiates all the AO system from a parameters file.
+	\item[$\bullet$] \textbf{realTimeController class}: gathers all control laws and is called during the simulation for updating the DM commands.
+	\item[$\bullet$] \textbf{errorBreakdown class}: independent tools that provides in the same time the end-to-end simulation plus a detailed error breakdown. See KASP note\# 6 for more details.
+	\item[$\bullet$] \textbf{psfR class}: PSF-R taking the systemSimulator class as an input for reconstruction the PSF from the simulated telemetry. See KASP note \#2 for more details.
+	\item[$\bullet$] \textbf{psfStats class}: here is a facility for estimating and storing the properties~(Strehl,Ensquared energy, FWHM) of a PSF.See KASP note\# 4 for more details.
+	\item[$\bullet$]\textbf{fourierModel class}: calculation of AO errors PSDs and then the PSF from the systemSimulator class using the Fourier description of the residual phase. The code has been originally written by C. Correia under the call spatialFrequencyAdaptiveOptics in the root folder of OOMAO.	
+	\item[$\bullet$] \textbf{crowdedFields class}: simulate a crowded field from a catalog~(\cite{Ascenso 2015}).
+	\item[$\bullet$] \textbf{quasiStellarObjects class}: simulate a quasi stellar object profile from a Sersíc profile plus a central Dirac function. The profile is then convolved by a PSF given as an input to the class.	
+\end{itemize}
+
+\subsection{The parameter file}
+
+The parameter file must be named 'parFileXXX' and only the XXX part is provided to the systemSimulator class. Tab.~\ref{T:parfile} summarizes all the parameters allowed to be simulated into KASP so far. Simulations of multiple WFS systems are feasible in providing a vector for guide stars locations and a flag dedicated to the tomographic process. If a tip-tilt sensor is defined, the systemSimulator class is designed to filter out tip-tilt measurements on the high-order WFS and it is also possible to perform tip-tilt tomography.\\
+
+KASP includes also a dedicated tool for generating segmented pupil including both reflexivity and phase errors, as co-phasing or gravity-induced errors, by providing a vector of Zernike coefficients per segment. See KASP note\# 6 about how to use of this facility.
+
+Also, you may need to import external data to simulate for finely your system as influence functions, real pupil shape or NCPA residual phase map, that is made available in KASP in filling the appropriate systemSimulator fields with your data or paths.
+
+\begin{table}[H]	
+	\centering
+\begin{scriptsize}
+	\begin{tabular}{p{2.25cm}p{5cm}}	
+		\hline 
+		\multicolumn{2}{c}{\textbf{Scientific target}} \\
+		\hline
+		magSrc & Target magnitude (Ex: 12).\\                                
+		photoSrc & Target photometry (Ex: photometry.H).\\
+		heightSrc & Science target height.\\                     		           
+		$[$ xSrc,ySrc$]$  & Target location in arcsec (Ex: [-10,0]).\\  			
+		\hline
+		\multicolumn{2}{c}{\textbf{Atmosphere}} \\
+		\hline
+		photoAtm            & Wavelength the atmosphere parameters are defined at.\\                    
+		r0                  & Fried's parameter in meter.\\                          
+		L0                  & Outer scale value.\\                               
+		windSpeed           & Wind speed per layer.\\                 
+		windDirection       & Wind directions per layer.\\               
+		fractionnalR0       & Relative strength per layer.\\     
+		layerAlt            & Turbulent layer altitudes.\\     				
+		\hline
+		\multicolumn{2}{c}{\textbf{Telescope}} \\
+		\hline
+		nResTel      & Pupil size in pixel.\\
+		D            & Pupil diameter in meter.\\                            
+		obs    		& Central obstruction in D unit.\\                           
+		fovTel 		& Telescope field of view in arcsec\\                              
+		Fe   		& Temporal frequency of atmosphere screens update\\                              
+		zenithAngle  & Telescope zenith angle in degree.\\    
+		\hline
+		\multicolumn{2}{c}{Segmented pupil} \\				                            
+	    \hline
+	    usePupilClass & Set to one to use the pupil class facility.\\
+	    segNSides & Number of segment sides.\\
+	    segRadius & Segment radius (unsubscribed circle) in meter.\\
+	    segNPixels & Segment resolution in pixel.\\
+	    segmentCoordinates & Segment center coordinates.\\
+	    pupilUnit & Coordinates units ('px' or 'm').\\
+	    noGap & Set to 1 to fix the segment gap issue.\\	    
+	    pupilSpider.n & Number of spiders.\\
+	    pupilSpider.angle & Angle position of spiders.\\
+	    pupilSpider.width & Spiders width in pixel.\\ % in px	       
+	    pupilCoeffPhaseModes & Segments phase Zernike coefficients.\\
+	    pupilReflexivity     & Segments reflextivity.\\
+	    \hline
+		\multicolumn{2}{c}{\textbf{Guide star sources}} \\
+		\hline
+		magGs               & Guide stars magnitude.\\                              
+		photoGs             & Guide stars photometry (Ex: photometry.Na)\\  
+		heightGs            & Guide stars height.\\                             
+		nLgsPhoton          & Photon return for LGS sources.\\                              
+		naProfile        & Sodium density profile.\\        
+		lgsfwhm             & Spot kernel size in arsec when using LGS.\\                               
+		$[$xGs,yGs$]$           & Guide stars locations.\\                                                     
+			\hline
+		\multicolumn{2}{c}{\textbf{High-order WFS}} \\
+		\hline
+		nL\_ho                  & Number of lenslets.\\                               
+		nPx\_ho                 & Number of pixel per sub-aperture.\\                              
+		ps\_ho       & Pixel scale in arcsec/pixel.\\	
+		thres\_ho               & Brightest pixel threshold.\\                              
+		ron\_ho     & Read-out noise in e- rms/pixel\\                                
+		phNoise\_ho      & Set to 1 for including photon noise.\\                                
+		throughput\_ho       & WFS optics throughput.\\  
+			\hline
+		\multicolumn{2}{c}{Tip-tilt sources} \\
+		\hline
+		mag\_tt               & Tip-tilt stars magnitude.\\                                 
+		photo\_tt             & Tip-tilt stars photometry \\                      
+		$[$x\_tt,y\_tt$]$            & Guide stars locations.\\                             	                                                    					
+	\end{tabular}
+\begin{tabular}{p{2.5cm}p{7cm}}			                              
+	\hline
+	\multicolumn{2}{c}{Tip-tilt WFS} \\
+	\hline
+	nL\_tt               & Number of lenslets for the TT WFS.\\                                       
+	nPx\_tt              & Number of pixel per sub-aperture for the TT WFS.\\                               
+	ps\_tt         & Pixel scale in arcsec/pixel.\\                     
+	ron\_tt    & Read-out noise in e- rms/pixel\\                               
+	phNoise\_tt     & Set to 1 for including photon noise.\\                             
+	throughput\_tt         & TT WFS optics throughput.\\      	                          
+	\hline
+	\multicolumn{2}{c}{Low bandwidth source} \\
+	\hline
+	mag\_ts               & Truth sensor stars magnitude.\\                                 
+	photo\_ts             & Truth sensor stars photometry \\                      
+	$[$x\_ts,y\_ts$]$            & Truth sensor location.\\                                          
+	\hline
+	\multicolumn{2}{c}{Low bandwidth truth sensor} \\
+	\hline
+	nL\_ts               & Number of lenslets for the TS.\\                                       
+	nPx\_ts              & Number of pixel per sub-aperture for the TS.\\                                 	
+	expTime\_ts          & TS WFS exposure time in atmosphere sampling period unit.\\                             
+	ps\_ts        & Pixel scale in arcsec/pixel.\\                       
+	thres\_ts           & Brightest pixel threshold.\\                                 
+	ron\_ts      & Read-out noise in e- rms/pixel\\                                           
+	phNoise\_ts       &Set to 1 for including photon noise.\\                                  
+	throughput\_ts        & TS WFS optics throughput.\\                              
+	\hline
+	\multicolumn{2}{c}{\textbf{Science imaging camera}} \\
+	\hline
+	clockRate           & Imaging camera clock rate in atmosphere sampling period unit.\\                                
+	exposureTime        & Exposure time in frames.\\                           
+	startDelay          & Number of waiting temporal frames before buffering images.\\                              
+	ps\_img       & Pixel scale in arcsec/pixel.\\                                
+	camRes              & Camera CCD resolution.\\                               
+	ron\_img       & Read-out noise in e- rms/pixel\\                                   
+	phNoise\_img   &Set to 1 for including photon noise.\\                                  
+	\hline
+	\multicolumn{2}{c}{\textbf{Deformable mirror}} \\
+	\hline
+	nActu               & Number of DM actuators.\\                           
+	coupling     & Actuators mechanical coupling\\                             
+	\hline
+	\multicolumn{2}{c}{\textbf{Loop set up}} \\
+	\hline
+	g\_ho          & High-order loop gain.\\                              
+	lat\_ho           & High order loop latency in seconds.\\              
+	g\_tt          & Tip-tilt loop gain.\\                              
+	lat\_tt           & Tip-tilt loop latency in seconds.\\              
+	g\_ts          & TS loop gain.\\                                   
+	\hline
+	\multicolumn{2}{c}{External data} \\
+	\hline      	
+	pupilTel            & Map containing the telescope pupil at nResTel resolution.\\
+	ncpaMap             & Map containing the NCPA residual phase map in radian at nResTel resolution.\\
+	ncpaWvl             & Imaging wavelength during NCPA calibration in meter.\\
+	psfNCPA & \\
+	validSubapMap & \\
+	validActuatorMap & \\
+	iFpath & \\
+	pathInteractionMatrix & \\
+	pathCommandMatrix & \\
+	pathTomoReconstructor & \\
+	\hline
+	\multicolumn{2}{c}{Flags} \\
+	\hline 
+	flagSH   & 1 for a diffrative SH and 0 for a geometric one.\\
+	flagTomo & 'none','mean', 'mmse-mvm' or 'mmse-recursif'.\\
+	flagTomoTT & 'none','mean', 'mmse-mvm' or 'mmse-recursif'.\\
+	dmControl & 'integrator' or 'polc'.\\
+	ttDmControl & 'integrator' or 'polc'.\\
+	controlBasis & 'zonal' or 'modal'.\\
+	parallelPhaseOnly & Set to 1 to simulate only AO in-band spatial frequencies.\\
+\end{tabular}
+\end{scriptsize}
+\captionsetup{font=scriptsize}	
+\caption{\scriptsize Summary of parameters including into KASP simulation. Bold part represents required parameters for simulating the system.}
+\label{T:parfile}
+\end{table}
+
+%\clearpage
+\subsection{How to use}
+
+The using of the systemSimulator class is very friendly. If your parameter file is named 'parFileKeckNGSAO' for instance, you only have to do the following call~:
+\begin{verbatim}
+	sys = systemSimulator('KeckNGSAO','runSimu',1,'parallelPhaseOnly',0,'disp',0,...
+	'flagMoffat',0,'flagGaussian',0);
+\end{verbatim}
+
+where all the field following the parameters file are not required~:
+\begin{itemize}
+	\item[$\bullet$] runSimu~: set to 1 to run the end-to end simulation.
+	\item[$\bullet$] parallelPhaseOnly~: set to one to simulate an atmospheric phase with only AO in-band correction spatial frequencies.
+	\item[$\bullet$] disp~: set to 1 to have some display during the simulations.
+	\item[$\bullet$] flagMoffat~: set to one to perform a Moffat fitting on the imaging camera PSF after upstream the simulation.
+	\item[$\bullet$] flagGaussian~: set to one to perform a Gaussian fitting on the imaging camera PSF.
+\end{itemize}
+
+\section{Conclusions}
+
+We've presented the main structure of KASP and how to use the systemSimulator class in the purpose of simulating easily an AO system from a parameter file.
+
+\bibliographystyle{plain} 
+\bibliography{/home/omartin/Documents/Bibliography/biblioLolo}
+
+\end{document}

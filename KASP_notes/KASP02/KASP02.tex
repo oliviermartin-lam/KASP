@@ -1,0 +1,379 @@
+\documentclass[12pt]{article}
+
+%\renewcommand{\baselinestretch}{1.65}
+\usepackage{amsmath,graphicx,bbm,amssymb}
+\usepackage{txfonts}
+\usepackage{array}
+\usepackage{subfigure}
+\usepackage{ccaption}
+\usepackage{color}
+\usepackage{tikz}
+\usetikzlibrary{arrows} 
+\usetikzlibrary{shapes.multipart}
+\usetikzlibrary{shapes.misc, positioning}
+\usepackage{float}
+\usepackage{calc}
+\usepackage{multirow}
+\usepackage{fancyhdr}
+\usepackage{colortbl}
+\usepackage[hmargin=1.5cm, top=2cm, bottom=2cm]{geometry}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\newcommand{\procspie}{Proc. SPIE } 
+\newcommand{\pasp}{Publications of the Astronomical Society of the Pacific } 
+\newcommand{\aap}{Astron. \& Astrophys. } 
+\newcommand{\mnras}{M.N.R.A.S } 
+
+\newcommand{\module}[1]{\left\vert #1 \right\vert}
+\newcommand{\norme}[1]{\left\vert\left\vert #1 \right\vert\right\vert}
+\newcommand{\para}[1]{\left(#1\right)}
+\newcommand{\cro}[1]{\left[#1\right]}
+\newcommand{\aver}[1]{\left\langle #1 \right\rangle}
+\newcommand{\bra}[1]{\left\lbrace #1 \right\rbrace}
+\newcommand{\xth}[1]{#1^{\text{th}}}
+\newcommand{\otfdl}{\text{OTF}_\text{DL}}
+
+\newcommand{\rz}{r_0}
+\newcommand{\lz}{L_0}
+\newcommand{\cnh}{C_n^2(h)}
+\newcommand{\nwfs}{\text{n}_\text{wfs}}
+\newcommand{\R}{\boldsymbol{\text{R}}}
+\newcommand{\Mc}{\boldsymbol{\text{M}_c}}
+\newcommand{\thSrc}{\boldsymbol{\theta}_\text{src}}
+\newcommand{\thGs}{\boldsymbol{\theta}_\text{gs}}
+\newcommand{\thNgs}{\boldsymbol{\theta}_\text{ngs}}
+\newcommand{\thLgs}{\boldsymbol{\theta}_\text{lgs}}
+\newcommand{\rbb}{\boldsymbol{r}}
+\newcommand{\rbun}{\boldsymbol{r}_1}
+\newcommand{\rbdeux}{\boldsymbol{r}_2}
+\newcommand{\rhob}{\boldsymbol{\rho}}
+\newcommand{\TTout}{\boldsymbol{\text{TTR}}}
+\newcommand{\TTonly}{\boldsymbol{\text{TT}}}
+
+\title{KASP Technical notes \#02:\\ Anisoplanatism model investigations}
+\author{O. Beltramo-Martin\footnote{olivier.martin@lam.fr}, C.~M. Correia}
+\date{}
+
+% Option to view page numbers
+%\pagestyle{plain} % change to \pagestyle{plain} for page numbers   
+\setcounter{page}{1}
+\fancyhead[LO,LE]{KASP Technical notes \#02}
+\fancyhead[RE,RO]{O. Beltramo-Martin}
+\pagestyle{fancy} 
+\setlength{\parindent}{0cm}
+
+\begin{document}
+
+\maketitle
+
+
+\rule{\columnwidth}{0.1mm}
+\tableofcontents
+\rule{\columnwidth}{0.1mm}
+\section{Purpose}
+
+We aim in this KASP note at describing the methods deployed so far to get the anisoplanatisms filter (both focal and angular) using theoretical  or simulation approaches.  We've compared different techniques which are all designed to provide an “OTF ratio”; the ratio between the OTF diffraction limit ($\otfdl$) including anisoplanatism and $\otfdl$. We identify this ratio as the Anisoplanatism transfer function~(ATF) that is derived considering different the following approaches~:
+
+\begin{itemize}
+	\item[$\bullet$] \textbf{End-to-end simulation:} using OOMAO, we propagate two sources located at a given separation through an atmosphere associated to a telescope and estimate the covariance of the anisoplanatic phase by accumulating screens.
+	
+	\item[$\bullet$] \textbf{Zonal derivation:} The auto/cross-covariance matrices are calculated from the atmosphere parameters through the point-wise integral calculation of the covariance between two sampled phase points. The auto-covariance of the anisoplanatic phase is thus coming from the sum of phase auto-covariance for both sources, minus twice the cross-correlation~(\cite{Fusco2000}) . This anisoplanatic covariance is the input of a routine taking this expression for providing the OTF.
+	
+\item[$\bullet$] \textbf{Flicker's method:} We explore the Flicker's method (\cite{Flicker2008}) that describes a generalized expression between the anisoplanatic phase structure function as function of the atmosphere and the geometry of the problem. Contrary to the zonal approach; actually the Flicker's one is zonal as well; we derive directly the OTF from the structure function without expressing the covariance.
+	
+\item[$\bullet$] \textbf{Zernike derivation:} We calculate the phase auto-covariance and cross-covariance between the two sources in the Zernike domain using OOMAO routines, based on the atmosphere+telescope definitions and a given number of modes. The anisoplanatic covariance is derived as the way as it's done for the zonal approach.
+	
+\item[$\bullet$] \textbf{Spatial frequencies approach:} the angular anisoplanatism is yielded into the Fourier domain by derivating its PSD based on works from  From \cite{Rigaut1998,Flicker2008}. Assuming the spatial stationarity of the phase, the covariance is calculated as the Fourier transform of this PSD allowing to derive the OTF in a straightforward fashion.
+	
+\end{itemize}
+
+\section{Filters implementation}
+\subsection{Simulation framework}
+
+The anisoplanatism covariance is evaluated in simulating the electric field propagation of two sources (any location and height), respectively src the on-axis source and gsRef the off-axis source, propagated through the atmosphere and telescope. The following scheme is repeated along 1000 temporally independent frames using the function draw(tel) allowing to renew phase screens for each defined altitude that are following a Kolmogorov statistics with a given set of ($\rz$,$\lz$).
+
+We derive the auto-covariance of the anisoplanatic phase which feeds a routine computing the OTF in 4D~: if the phase is ecribed over $n_\text{pt}\times n_\text{pt}$ samples, the covariance depending on the separation and the phase sample location is a $n_\text{pt}^2 \times n_\text{pt}^2$ matrix. The OTF is then reduced to a $n_\text{pt}\times n_\text{pt}$ space by averaging out the phase structure function over the pupil~(\cite{GillesJOSA2008}).\\
+
+This method should provide the more accurate ATF since it relies on real optical propagation but brings out two main restrictions:
+\begin{itemize}
+	\item[$\bullet$] \textbf{The convergence:} we need to accumulate enough independent phase screens for ensuring the covariance matrix to converge. In this work 1000 frames has looked quite sufficient.
+	\item[$\bullet$] \textbf{The phase sampling:} we've sampled the phase in the pupil using 81 pixels. Less on that leads to miss higher spatial frequencies up above 1/2d with d=D/(\#pixel-1) and introducing a fitting error. When introducing the AO system for a purpose of error breakdown estimation or PSF-reconstruction, the anisoplanatism should be described on low frequencies only, below the DM cut-off frequency. Above this limit is considered as a fitting error that is handled independently from anisoplanatism effect.\\
+\end{itemize}
+
+Here is a piece of code written into Matlab$^{\circledR}$ and involving OOMAO features for deriving the ATF on a end-to-end simulation baseline. These lines describe the structure~(the real code is a bit more furnished) of the implementation and highlight the key operations made so far on this.
+\begin{center}
+\framebox{
+	\begin{minipage}{0.95\columnwidth}
+		\textcolor{blue}{
+			\begin{tabular}{ll}
+		draw(tel);&\\
+		gs	    &= gs.*tel;\\
+		phOff	&= gs.meanRmPhase;\\
+		src		&= src.*tel;\\
+		phOn	&= src.meanRmPhase;\\
+		phAni	&= phOff - phOn;\\
+		Caniso	&= Csimu + phAni(:)*phAni(:)' ;\\
+		ATF		&= psfrTools.zonalCovarianceToOtf(Caniso,npsf,D,pitch,src.wavelength)./otfDL;
+	\end{tabular}}
+	\end{minipage}
+}
+\end{center}
+
+
+\subsection{Zonal approaches}
+\subsubsection{Zonal covariance derivation}
+The anisoplanatic phase is defined as~:
+\begin{equation}
+\phi_\Delta(\rbb) = \phi_\text{src}(\rbb) - \phi_\text{gs}(\rbb),
+\end{equation}
+introducing the anisoplanatic covariance as:
+\begin{equation} \label{E:cov}
+	\begin{aligned}
+	C_\Delta(\rbun,\rbdeux) &= \aver{\phi_\Delta(\rbun)\phi^*_\Delta(\rbdeux)}\\
+	&=  \aver{\phi_\text{src}(\rbun)\phi^*_\text{src}(\rbdeux)} + \aver{\phi_\text{gs}(\rbun)\phi^*_\text{gs}(\rbdeux)} - \aver{\phi_\text{src}(\rbun)\phi^*_\text{gs}(\rbdeux)}- \aver{\phi_\text{gs}(\rbun)\phi^*_\text{src}(\rbdeux)}\\ 
+	&= C_\text{src}(\rbun,\rbdeux) + C_\text{gs}(\rbun,\rbdeux) - C_\text{src-gs}(\rbun,\rbdeux) - C_\text{gs-src}(\rbun,\rbdeux),
+	\end{aligned}
+\end{equation}
+						
+where covariance matrices involved in Eq.~\ref{E:cov} are produced analytically by integration of the phase resolution elements along altitude layers and positions. In the case of focal anisoplanatism, $C_\text{src}$ and $C_\text{gs}$ must be different in describing the phase through respectively a cylinder and a cone. Moreover $C_{src-gs}$ is not necessarily the transpose matrix of $C_{gs-src}$ when the anisoplanatism breaks revolution symmetry of the problem.
+
+\begin{center}
+	\framebox{
+		\begin{minipage}{0.95\columnwidth}
+			\textcolor{blue}{
+				\begin{tabular}{ll}
+					$[$C11,C12$]$	&= phaseStats.spatioAngularCovarianceMatrix(npt,D,atm,src,gs);\\
+					$[$C22,C21$]$ &= phaseStats.spatioAngularCovarianceMatrix(npt,D,atm,gs,src);\\
+					Caniso	&= C11 + C22 – C12 - C21;\\
+					ATF		&= psfrTools.zonalCovarianceToOtf(Czonal,npsf,D,pitch,src.wavelength)./otfDL;
+				\end{tabular}								}
+		\end{minipage}
+	}
+\end{center}
+
+\subsubsection{Flicker's approach}
+
+Flicker has proposed in \cite{Flicker2008} a generalized expression of the anisoplanatic phase structure function $D_\Delta(\rhob,\rbb,\boldsymbol{\theta})$ for finite altitude sources and atmospheres described by a $\cnh$ profile and an outer scale value:
+\begin{equation}
+\begin{aligned}
+D_\Delta(\rhob,\rbb,\boldsymbol{\theta}) = 0.12184k^2\lz^{5/3} \int_0^{z_\text{LGS}} dh \cnh & \left[ 2I(0)-I(f_0\rho) - I(f_0\rho(1-\gamma)) + I(f_0 \module{\rhob- \gamma \rbb + h\boldsymbol{\theta}})\right.\\
+&\left.- I(f_0 \module{\gamma \rbb - h \boldsymbol{\theta}}) - I(f_0 \module{ \gamma\rbb  +h\boldsymbol{\theta}}) + I(f_0 \module{(1-\gamma)\rhob + \gamma\rbb  - h\boldsymbol{\theta}})\right],
+\end{aligned}
+\end{equation}
+
+where $k=2\pi/\lambda$, $\gamma = h/z_\text{LGS}$, $f_0 = 2\pi/L_0$, $\rhob$ is the separations vector in the pupil plane and $\rbb$ the locations. Function $I(\alpha)$ invokes the modified Bessel function of the second kind~:
+\begin{equation}
+	I(\alpha) = \dfrac{\alpha^{5/6}\times K_{5/6}(\alpha)}{2^{5/6}\times\Gamma(11/6)}.
+\end{equation}
+
+Flicker's approach must provide same results when comparing to the zonal derivation since both of them relies on covariance calculations of the atmospheric phase.
+
+\subsection{Modal approaches}
+\subsubsection{Zernike decomposition}
+
+The spatial angular covariance of Zernike modes on the atmospheric phase is well described by \cite{Chassat1989}. Following the same approach deployed in the zonal derivation, the covariance of the anisoplanatism is always describable by Eq.~\ref{E:cov} whatever the modal basis upon which the phase is decomposed on. The main limitation of this approach is the necessary modal truncation that filters out high spatial frequencies. The consequence on the ATF is dominated by a slower decreasing of the ATF (not necessarily towards 0)~: the less energy we include into the anisoplanatism the more flat is the ATF.
+
+However as discussed previously, these high spatial frequencies should belong to the fitting error and not be introduced into the anisoplanatism term allowing to estimate the ATF quite properly through the Zernike approach.
+ 
+\begin{center}
+	\framebox{
+		\begin{minipage}{0.95\columnwidth}
+			\textcolor{blue}{
+					\begin{tabular}{ll}
+				nm   	&= 100;\\
+				zern	&= zernike(2:nm,'resolution',npt,'D',D,'pupil',tel.pupil);\\
+				otfDL	&= psfrTools.modes2Otf(zeros(nm-1),zern.modes,zern.pupil,npsf,1);   \\
+				C11		&= phaseStats.zernikeAngularCovariance(zern,atm,[src,src]);\\
+				C22 	&= phaseStats.zernikeAngularCovariance(zern,atm,[gsRef,gsRef]);\\
+				C12		&= phaseStats.zernikeAngularCovariance(zern,atm,[src,gsRef]);\\
+				Caniso	&= C11 + C22 - C12 - C12';\\
+				ATF		&= psfrTools.modes2Otf(Cani,zern.modes,zern.pupil,npsf,1,'Vii')./otfDL;
+			\end{tabular}}
+		\end{minipage}
+	}
+\end{center}
+
+\subsubsection{PSD-based approach}
+
+All analytic methods to derive the ATF relies on a description of the atmospheric phase spectrum $\tilde{\Phi}(\boldsymbol{k})$ as proposed by Von-K\'arm\`an, calling logically for a Fourier calculation of the ATF. When the atmospheric phase behaves as a stationary stochastic process, i.e. the zonal covariance matrix is Toeplitz, the covariance map of the anisoplanatic phase is given by the Fourier transform of the PSD through the Wiener-Khintchine theorem. From the single atmospheric layer PSD $\tilde{\Phi}_h(\boldsymbol{k})$, the required steps to derive the ATF follow~(\cite{Rigaut1998}):
+
+\begin{equation} \label{E:psd}
+\begin{aligned}
+    \tilde{\Phi}_\Delta(\boldsymbol{k},\boldsymbol{\theta}) &= 2\int_{0}^{\infty} dh\cnh \tilde{\Phi}_h(\boldsymbol{k})\times\para{1-\cos(-2\pi i \boldsymbol{k}\cdot h\boldsymbol{\theta})}\\
+	C_\Delta(\rhob,\boldsymbol{\theta}) &= \mathcal{F}\cro{\tilde{\Phi}_\Delta(\boldsymbol{k},\boldsymbol{\theta})}\\
+	D_\Delta(\rhob,\boldsymbol{\theta}) &= 2\times(C_\Delta(0) - C_\Delta(\rhob))\\
+	\text{ATF}(\rhob/\lambda) &= \exp(-0.5\times D_\Delta(\rhob,\boldsymbol{\theta}))
+\end{aligned}
+\end{equation}
+
+The spatialFrequencyAdaptiveOptics library included into OOMAO delivers directly the anisoplanatic PSD as described in Eq.~\ref{E:psd}. The stationarity exigence on the phase avoid using the PSD approach for angular+focal anisoplanatism configuration. Except that, applying the Matlab fft2 algorithm requires to define the PSD with the same frequencies grid, otherwise it turned out the ATF is no longer symmetric when it should be.
+
+\begin{center}
+	\framebox{
+		\begin{minipage}{0.95\columnwidth}
+			\textcolor{blue}{
+				\begin{tabular}{ll}
+				n   		&= 101;\\
+				fao 		&= spatialFrequencyAdaptiveOptics(tel,atm,n,0,0,1e-3,0,2*n,'Rigaut',0,0);\\
+				ps  		&= 2*fao.fc/size(fao.fx,1);\\
+				fao.src     &= src;\\
+				psdAniso    &= fao.anisoplanatismPSD(); \\
+				tmp	        &= fftshift(abs(fourierTools.psd2otf(psdAniso,ps)));  \\
+				ATF	        &= psfrTools.interpolate(tmp,npsf);
+			\end{tabular}}
+		\end{minipage}
+	}
+\end{center}
+
+\section{Results}
+
+Values presented in the following section results from a 3-layers atmosphere defined with $\rz$@500nm to 20 cm distributed along 0, 8 and 16~km with a fractional energy reaches respectivily 75, 15 and 10\%. Telescope diameter has been fixed to 10~m without central obstruction. All calculations were done at K-band imaging wavelength and at zenith, and the LGS beacon altitude was 90 km.\\
+
+Following Tab.~\ref{T:res} concatenates Strehl ratio comparison across all methods for both angular and focal anisoplanatism and considering different outer scale and separation. Note the outer scale does matter in the results since the there's no telescope filtering out the low spatial frequencies for which is outer scale impacts a lot. Managing this filtering allows to mitigate the impact of the outer onto the ATF calculation. According to Tab.~\ref{T:res}, as suspected the performance is growing up when outer scale, and so atmospheric phase variance, scaling down, while it drops down when introducing the focal anisoplanatism or increasing the angular separation. For large separation, we're dominated by the angular anisoplanatism considering NGS and LGS cases provide similar results.\\
+
+Zonal approaches looks definitely more accurate than modal ones when comparing with simulations. The Zernike approach especially overestimates systematically the strehl ratio as we could suspect from the modal truncation. However this issue can be raised in decomposing on more modes but calling for a more time-consumption routine. This over-estimation is mitigated for large separation, suggesting in such cases the relative error turns to be higher on low order modes.\\
+
+Fig.~\ref{F:atf} reports ATFs and PSFs radial average for angular, focal and both anisoplanatism when $L_0$ is taken at 50~m and $\theta$ at 20", except for the pure focal anisoplanatism case. As we've suspected, zonal approaches provide very simular results, quite comparable to simulations. Impact on the PSF ranges several decade of percent for high angular frequency, but may not impact severally downstream AO PSF processing when introducing fitting error gathering spatial frequencies above 1/2d.
+
+\begin{table}[h!] \label{T:res}
+	\centering
+	\footnotesize
+	\begin{tabular}{|l|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+		\hline
+		\rowcolor{blue!50} NGS aniso & \multicolumn{5}{c|}{0"} & \multicolumn{5}{c|}{20"} & \multicolumn{5}{c|}{40"}\\
+		\hline
+		method & S & Zo & F & Z & P & S & Zo & F & Z & P & S & Zo & F & Z & P \\ 
+		\hline
+		$L_0=100$ m & 1 &1 &1 &1 &1 & 0.46	& 0.45 &0.45 &0.47 & 0.46& 0.19& 0.18& 0.18&0.20 & 0.19\\
+		\hline
+		$L_0=50$ m  & 1 &1 &1 &1 &1 & 0.48 &0.47 & 0.47 & 0.48&	0.47& 0.20 &0.19 &0.19&	0.22 &0.20 \\
+		\hline
+		$L_0=10$ m  & 1 &1 &1 &1 &1 & 0.63&	0.63 &0.63&	0.65&	0.63&	0.44&	0.43&	0.43&	0.48&	0.44 \\
+		\hline
+		\rowcolor{orange!50} LGS aniso & \multicolumn{5}{c|}{0"} & \multicolumn{5}{c|}{20"} & \multicolumn{5}{c|}{40"}\\
+		\hline
+		$L_0=100$ m & 0.81 &0.79 &	0.80 &	n.a& n.a&0.44&0.44&	0.44&n.a&	n.a&	0.19&	0.19&	0.19&	n.a&n.a\\
+		\hline
+		$L_0=50$ m & 0.82 &0.81&	0.81&	n.a& n.a&	0.47&	0.46&	0.46&	n.a &n.a&	0.21&	0.21&	0.21&	n.a&n.a \\		
+		\hline
+		$L_0=10$ m & 0.87 &0.86&	0.86 &n.a& n.a&0.64&	0.63&	0.62&	n.a& n.a&	0.44&	0.44&	0.44&n.a& n.a \\
+		\hline
+	\end{tabular}
+\caption{\small NGS and LGS anisoplanatism Strehl ratios, comparing analytical descriptions to numerical simulations, for different
+	outer scales and different off-axis angles $\theta$.}
+\end{table}
+
+\begin{figure}[H] \label{F:atf}	
+	\centering
+	\includegraphics[scale=0.385]{/home/omartin/Projects/KASP/Results/Anisoplanatism/figures/ATFs/atf_NGS_20_Kband.pdf}\hspace{1cm}	
+	\includegraphics[scale=0.42]{/home/omartin/Projects/KASP/Results/Anisoplanatism/figures/ATFs/psf_NGS_20_Kband.pdf}
+	
+	\includegraphics[scale=0.42]{/home/omartin/Projects/KASP/Results/Anisoplanatism/figures/ATFs/atf_LGS_0_Kband.pdf}\hspace{1cm}	
+	\includegraphics[scale=0.42]{/home/omartin/Projects/KASP/Results/Anisoplanatism/figures/ATFs/psf_LGS_0_Kband.pdf}
+	
+	\includegraphics[scale=0.42]{/home/omartin/Projects/KASP/Results/Anisoplanatism/figures/ATFs/atf_LGS_20_Kband.pdf}\hspace{1cm}	
+	\includegraphics[scale=0.42]{/home/omartin/Projects/KASP/Results/Anisoplanatism/figures/ATFs/psf_LGS_20_Kband.pdf}
+	\caption{Radial average of anisoplanatic functions~(\textbf{left}) and PSFs~(\textbf{right}) for (\textbf{top})~: NGS anisoplanatism, (\textbf{middle})~: focal anisoplanatism, (\textbf{bottom})~: focal+angular anisoplanatism  using a 50~m outer scale and a 20" of separation when any.}
+\end{figure}
+
+
+\section{Split modal control}
+
+Split modal control in AO operations calls for producing ATF for both tip-tilt angular anisoplanatism and focal+angular anisoplanatism separately. The total anisoplanatic error can be explicitly derived from the following expression~:
+
+\begin{equation} \label{E:totaniso}
+\phi_\Delta(\rbb) = \phi_\text{src}(\rbb) - \TTout.\phi_\text{lgs}(\rbb) - \TTonly.\phi_\text{ngs}(\rbb),
+\end{equation}
+
+where $\TTonly(\rbb) = [Z_2(\rbb),Z_3(\rbb)].[Z_2(\rbb),Z_3(\rbb)]^{-1}$ is the zonal high-order filter and $\TTout(\rbb) = I_d - \TTonly(\rbb) $ the zonal tip-tilt filter for $Z_2(\rbb),Z_3(\rbb)$ the tip-tilt modes and $I_d$ the identity matrix defined by the number of phase samples in the pupil. Eq.~\ref{E:totaniso} claims for a anisoplanatic covariance getting to~:
+\begin{equation} \label{E:cov2}
+\begin{aligned}
+C_\Delta(\rbun,\rbdeux) &= \aver{\phi_\Delta(\rbun)\phi^*_\Delta(\rbdeux)}\\
+&=  \underbrace{\aver{\phi_\text{src}(\rbun)\phi^*_\text{src}(\rbdeux)} + \TTout\aver{\phi_\text{lgs}(\rbun)\phi^*_\text{lgs}(\rbdeux)}\TTout^t + \TTonly\aver{\phi_\text{ngs}(\rbun)\phi^*_\text{ngs}(\rbdeux)}\TTonly^t}_{\text{Auto-covariance terms}}\\
+&- \underbrace{\aver{\phi_\text{src}(\rbun)\phi^*_\text{lgs}(\rbdeux)}\TTout^t - \TTout\aver{\phi_\text{lgs}(\rbun)\phi^*_\text{src}(\rbdeux)}}_{\text{Cross-covariance src/lgs high-order}}\\
+&- \underbrace{\aver{\phi_\text{src}(\rbun)\phi^*_\text{ngs}(\rbdeux)}\TTonly^t - \TTonly\aver{\phi_\text{ngs}(\rbun)\phi^*_\text{src}(\rbdeux)}}_{\text{Cross-covariance src/tip-tilt}}\\
+&+ \underbrace{\TTout\aver{\phi_\text{lgs}(\rbun)\phi^*_\text{ngs}(\rbdeux)}\TTonly^t + \TTonly\aver{\phi_\text{ngs}(\rbun)\phi^*_\text{lgs}(\rbdeux)}\TTout^t}_{\text{Cross-covariance lgs high-order/tip-tilt}}.
+\end{aligned}
+\end{equation}
+
+One of the question raised by the split control is about the cross-terms between high-order lgs/tip-tilt in Eq.~\ref{E:cov2}~: do they matter when in the anisoplanatism structure or can be considered as a second-order effect? Based on properties of $\TTonly$ and $\TTout$, Eq.~\ref{E:totaniso} is allowed to be rewritten as~:
+\begin{equation}
+\begin{aligned}
+\phi_\Delta(\rbb) &= \TTout.\para{\phi_\text{src}(\rbb) - \phi_\text{lgs}(\rbb)} + \TTonly.\para{\phi_\text{src}(\rbb)-\phi_\text{ngs}(\rbb)}\\
+&= \TTout.\phi_{\Delta_\text{lgs}}(\rbb) + \TTonly.\phi_{\Delta_\text{ngs}}(\rbb),\\
+\end{aligned}
+\end{equation}
+
+that suggests the anisoplanatic covariance is roughly a sum of the focal-angular term plus the tip-tilt angular anisoplanatism~:
+\begin{equation} \label{E:cov3}
+\begin{aligned}
+C_\Delta(\rbun,\rbdeux) \simeq \TTout.C_{\Delta_\text{lgs}}(\rbun,\rbdeux).\TTout^t + \TTonly.C_{\Delta_\text{ngs}}(\rbun,\rbdeux).\TTonly^t.
+\end{aligned}
+\end{equation}
+
+This formulation suits to AO operations in a sense we've got the possibility to define the two ATF independently and deal separately with high-order and tip-tilt modes when processing AO telemetry in the purpose of PSF modeling/reconstruction. This assumption has got through a systematic analysis consisting in simulating phase screens, as done as earlier sections, and computing the \emph{total ATF} by accumulating the anisoplanatic phase as defined in Eq.~\ref{E:totaniso}. The covariance of this phase includes all cross-terms and provides downstream the real ATF that is compared to the multiplication high-order ATF with tip-tilt ATF, that means the cross-term high-order/tip-tilt, produced by summing two single covariance matrices~(Eq.~\ref{E:cov3}). The comparison is a test of the split high-order/tip-tilt assumption when deriving the ATF and is done over different geometric configurations.\\
+
+Tab.~\ref{T:strehl2} summarizes the K-band Strehl ratio values obtained in presence of both tip-tilt and focal-angular anisoplanatism. ATFs are produced by either running a simulation~(see previous section for atmosphere description) or a zonal analytical calculations for four different computation~:
+\begin{itemize}
+	\item[$\bullet$]  the total ATF including all cross-terms and derived by simulation using Eq.~\ref{E:totaniso} and estimated analytically by the covariance described in Eq.~\ref{E:cov2}
+	\item[$\bullet$] the tip-tilt ATF derived from the anisoplanatic covariance and filtered out from the high-order contributions. It compares very well to the direct computation of the tip-tilt anisoplanatic covariance without passing by the filtering step.
+	\item[$\bullet$] the LGS ATF grabbing the focal+angular anisoplanatism filtered out from the tip-tilt
+	\item[$\bullet$] the product ATF tip-tilt and lgs that misses the cross term and must be compared to the total ATF.	
+\end{itemize}
+
+Values are provided for a "L" configuration of the source/lgs/ngs asterism with different positions of the LGS and NGS in keeping the source on-axis. Radial average of the ATFs and PSFs are produced in Fig.~\ref{F:atfcut} while ATFs shape are displayed in Fig.~\ref{F:atf2}.\\
+
+The zonal approach offers a good agreement when comparing to simulation results int terms of Strehl ration and PSF shape. Tip-tilt and focal ATF are particularly well reproduced and lead to a similar ATF when multiplied each other. The cross-term high order lgs/tip-tilt appears to be negligible over this study. We could expect these terms to be more correlated for a NGS/LGS at the same location because the higher cross-section between the NGS cylinder and the LGS cone. Nevertheless that is not appeared to do so when comparing Strehl ratio values produced by the total anisoplanatism and the multiplication tip-tilt/high order modes ATFs. The conclusion popping out from this analysis is that these cross-terms high-order lgs/tip-tilt can be skipped in the anisoplanatism modeling, allowing to derive the ATF as a product of two independent terms.
+
+\begin{table}[h!] \label{T:strehl2}
+	\centering
+	\begin{tabular}{|c||c|c|c||c|c|c||c|c|c|}
+	\hline
+		LGS position & \multicolumn{3}{c||}{0"}& \multicolumn{3}{c||}{10"} & \multicolumn{3}{c|}{20"} \\
+		\hline
+		NGS position & 0" & 20" & 40" & 0"& 20"& 40"& 0"& 20"& 40"\\
+		\hline
+		& \multicolumn{9}{c|}{Strehl values} \\
+		\hline
+		Sim. total & 0.85&0.75&0.56&0.74&0.65&0.49&0.55&0.48 &0.37 \\
+			\hline
+		Zon. total & 0.83&0.74&0.56&0.75&0.66&0.50&0.58&0.51 &0.38 \\
+			\hline
+		Sim. HOxTT & 0.85&0.75&0.56&0.74&0.65&0.49&0.55&0.47 &0.37\\
+			\hline
+		Zon. HOxTT & 0.83&0.73&0.55&0.73&0.64&0.48&0.53&0.47 &0.36\\
+			\hline
+		Sim. HO    & 0.85&0.85&0.86&0.74&0.74&0.75&0.55&0.54 &0.56\\
+			\hline
+		Zon. HO    & 0.83&0.83&0.83&0.73&0.73&0.73&0.53&0.54 &0.53\\
+			\hline
+		Sim. TT    & 1   &0.88&0.65&1   &0.88&0.65&1   &0.88 &0.65\\
+			\hline
+		Zon. TT    & 1   &0.88&0.66&1   &0.88&0.66&1   &0.88 &0.66\\
+		\hline
+	\end{tabular}
+\caption{Strehl ratio values in K-band for a "L" geometry of the asterism composed by the on-axis source, the LGS and NGS with different separations. Comparison are made considering the simulation or the zonal approach, first on the total anisoplanatism, second on single focal/tip-tilt terms. The tip-tilt/high-order lgs cross terms contribution are looked through the difference on the total anisoplanatism and the product high-order/tip-tilt.}
+\end{table}
+
+\begin{figure}[h!] \label{F:atfcut}
+	\centering
+	\includegraphics[scale=0.54]{/home/omartin/Projects/KASP/Results/Anisoplanatism/figures/ATFs/atfprofile1}\hspace{.5cm}
+	\includegraphics[scale=0.54]{/home/omartin/Projects/KASP/Results/Anisoplanatism/figures/ATFs/atfprofile2}
+	\includegraphics[scale=0.54]{/home/omartin/Projects/KASP/Results/Anisoplanatism/figures/ATFs/psfprofile}
+	\caption{Radial average of ATFs~(\textbf{left}) and PSFs~(\textbf{right}) providing by either a end-to-end simulation or the zonal analytical calculations for a "L" configuration including the science on-axis, the LGS 20" north and the NGS 20" east.}
+\end{figure}
+
+\begin{figure}[h!] \label{F:atf2}
+	\centering
+	\includegraphics[scale=1]{/home/omartin/Projects/KASP/Results/Anisoplanatism/figures/ATFs/atfprofile3.pdf}
+	\caption{Comparisons on ATF for a "L" configuration including the science on-axis, the LGS 20" north and the NGS 20" east. (\textbf{first line})~: total anisoplanatism simulated v. high-order/tip-tilt simulated ATF multiplicated  (\textbf{second line})~:total anisoplanatism simulated v. analytical zonal calculation (\textbf{third line})~: focal angular anisoplanatism simulated v. zonal (\textbf{fourth line})~: tip-tilt angular anisoplanatism simulated v. zonal.}
+\end{figure}
+	
+
+\section{Conclusions}
+
+Several analytical calculations of the focal+angular anisoplanatism transfer function were compared to an end-to-end simulation, based on the real propagation of the electric field coming from two separated sources. Zonal approaches highlighted very good agreement with simulations and offers a fast way to produce the anisoplanatism kernel for PSF modeling problems. On top of that, the separation between tip-tilt measured on the NGS and high-order on LGS have been confirmed to be a reasonable assumption in comparing the product of the two ATFs with what the real one is, using both simulation and analytical calculation and for different NGS/LGS locations. It allows to deal with NGS and LGS focal anisoplanatism separately for processing AO telemetry and reconstructing the PSF.
+
+\bibliographystyle{plain} 
+\bibliography{/home/omartin/Documents/Bibliography/biblioLolo}
+
+\end{document}

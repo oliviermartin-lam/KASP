@@ -1,0 +1,379 @@
+\documentclass[12pt]{article}
+
+%\renewcommand{\baselinestretch}{1.65}
+\usepackage{amsmath,graphicx,bbm,amssymb}
+\usepackage{txfonts}
+\usepackage{array}
+\usepackage{subfigure}
+\usepackage{caption}
+\usepackage{color}
+\usepackage{tikz}
+\usetikzlibrary{arrows} 
+\usetikzlibrary{shapes.multipart}
+\usetikzlibrary{shapes.misc, positioning}
+\usepackage{float}
+\usepackage{calc}
+\usepackage{multirow}
+\usepackage{fancyhdr}
+\usepackage{colortbl}
+\usepackage[hmargin=1.5cm, top=2cm, bottom=2cm]{geometry}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\newcommand{\procspie}{Proc. SPIE } 
+\newcommand{\pasp}{Publications of the Astronomical Society of the Pacific } 
+\newcommand{\aap}{Astron. \& Astrophys. } 
+\newcommand{\mnras}{M.N.R.A.S } 
+
+\newcommand{\module}[1]{\left\vert #1 \right\vert}
+\newcommand{\norme}[1]{\left\vert\left\vert #1 \right\vert\right\vert}
+\newcommand{\para}[1]{\left(#1\right)}
+\newcommand{\cro}[1]{\left[#1\right]}
+\newcommand{\aver}[1]{\left\langle #1 \right\rangle}
+\newcommand{\bra}[1]{\left\lbrace #1 \right\rbrace}
+\newcommand{\xth}[1]{#1^{\text{th}}}
+\newcommand{\otfdl}{\text{OTF}_\text{DL}}
+
+\newcommand{\rz}{r_0}
+\newcommand{\lz}{L_0}
+\newcommand{\cnh}{C_n^2(h)}
+\newcommand{\nwfs}{\text{n}_\text{wfs}}
+\newcommand{\R}{\boldsymbol{\text{R}}}
+\newcommand{\Mc}{\boldsymbol{\text{M}_c}}
+\newcommand{\thSrc}{\boldsymbol{\theta}_\text{src}}
+\newcommand{\thGs}{\boldsymbol{\theta}_\text{gs}}
+\newcommand{\thNgs}{\boldsymbol{\theta}_\text{ngs}}
+\newcommand{\thLgs}{\boldsymbol{\theta}_\text{lgs}}
+\newcommand{\rbb}{\boldsymbol{r}}
+\newcommand{\rbun}{\boldsymbol{r}_1}
+\newcommand{\rbdeux}{\boldsymbol{r}_2}
+\newcommand{\rhob}{\boldsymbol{\rho}}
+\newcommand{\TTout}{\boldsymbol{\text{TT}}_\text{out}}
+\newcommand{\TTonly}{\boldsymbol{\text{TT}}_\text{only}}
+\newcommand{\otf}[1]{\text{OTF}_{#1}}
+\newcommand{\eps}{\boldsymbol{\varepsilon}}
+\newcommand{\epspara}{\boldsymbol{\varepsilon}_\parallel}
+\newcommand{\hi}{\boldsymbol{h}_i}
+\newcommand{\hj}{\boldsymbol{h}_j}
+
+\title{KASP Technical notes \#03:\\ Point spread function reconstruction with KASP}
+\author{O. Beltramo-Martin\footnote{olivier.martin@lam.fr}, C.~M. Correia}
+
+% Option to view page numbers
+%\pagestyle{plain} % change to \pagestyle{plain} for page numbers   
+\setcounter{page}{1}
+\fancyhead[LO,LE]{KASP Technical notes \#03}
+\fancyhead[RE,RO]{O. Beltramo-Martin}
+\pagestyle{fancy} 
+\setlength{\parindent}{0cm}
+
+\begin{document}
+
+\maketitle
+
+\rule{\columnwidth}{0.1mm}
+\tableofcontents
+\rule{\columnwidth}{0.1mm}
+
+\section{Purpose}
+
+We describe how PSF reconstruction can be performed within the Keck Adaptive optics Simulation Pipeline~(KASP) infrastructure. Beyond the classical approach proposed by V\'eran~(\cite{Veran1997}), we base our approach on DM-based command for reducing the amount of information to handle in the case of tomographic systems. To deal with non-stationary residual phase, what could occur for LGS-based AO system, we base the OTF calculation using a 4D point-wise definition of the phase. We illustrate how the PSF-R infrastructures couples with KASP and results using NGS/LGS observation@Keck.
+
+
+\section{PSF reconstruction approaches}
+\subsection{Classical approach}
+
+Perform PSF-R is a matter of estimating the covariance matrix of the residual phase. This later is usually seen as a sum of different terms, assumed to be statistically independent to others, leading to derive the OTF $\otf{\varepsilon}$ associated to this residual phase to a product as follows~:
+\begin{equation} \label{E:otfproduct}
+	\otf{\varepsilon} = \otf{\varepsilon_\parallel}\times \otf{\text{NCPA}}\times \text{ATF} \times \otf{\perp} ,
+\end{equation}
+where $\otf{\varepsilon_\parallel}$ is derived from the phase structure function of the residual phase within the AO correction radius~:
+\begin{equation} \label{E:otfveran}
+	\otf{\varepsilon_\parallel} = \text{exp}\para{-\dfrac{1}{2} \bar{D}_{\varepsilon_\parallel}(\rhob)}.
+\end{equation}
+Latest equation involves a average of the residual phase structure function across the pupil, permitting to decrease the complexity of the computation.
+
+For $N\times N$ samples to discretize the phase, its covariance matrix sizes $N^2\times N^2$ leading to a 4D computation. When considering NGS, the residual phase is well approximated as a stationary stochastic process allowing to consider the covariance as a function of the phase samples separation baseline, that reduces the average covariance as a $N\times N$ map. The mean phase structure function is then derived by~:
+\begin{equation} \label{E:Dphiavg}
+\bar{D}_{\epspara}(\rhob) = \sum \limits_{i,j}^{N_c} \mathcal{C}_{\epspara}(i,j) U_{ij}(\rhob),
+\end{equation}
+with~:
+\begin{equation} \label{E:Uij}
+U_{ij}(\rhob) = \dfrac{\iint_\mathcal{P} \boldsymbol{dr}  P(\rbb)P^\ast(\rbb + \rhob)\para{\hi(\rhob) - \hi(\rbb + \rhob)} \times 
+	\para{\hj(\rhob) - \hj(\rbb + \rhob)}} {\iint_\mathcal{P}\boldsymbol{dr} P(\rhob)P(\rbb + \rhob)},
+\end{equation}
+where $\hi$ functions are modes the phase is projected over, that could Zernike and FM influence functions modes. 
+
+In practice, \cite{Gendron2006} proposes to project DM modes $\hi$, onto the DM eigen space for deploying the $V_ii$ method. The covariance matrix $\mathcal{C}_{\varepsilon\varepsilon}(i,j)$ is obtain from reconstructing WFS measurements in $\boldsymbol{h}(\rhob)$~:
+\begin{equation}
+	\mathcal{C}_{\epspara}(i,j) =  \R\aver{\boldsymbol{s}(i) \boldsymbol{s}^t(j)}\R^t - \mathcal{C}_{n} + \mathcal{C}_\text{alias},
+\end{equation}
+where $\mathcal{C}_{n}$ and $\mathcal{C}_\text{alias}$ are respectively  the WFS noise and aliasing covariance matrix perturbing the WFS measurements. To identify the noise covariance, several methods exist and we chose to estimate the noise variance per DM commands by deriving the difference of temporal auto-correlation and 1 frame delay cross-correlation, taken at 0. See \cite{Flicker2008} for more details.
+
+About the aliasing, not we add the covariance instead of subtracted it. When the aliasing contaminates WFS measurements, it is reconstructing to DM commands and compensate by the DM, in a way there's a anti-correlation between the aliasing component in the residual phase and the aliasing measured by the WFS. Taken into account leads to add the covariance as demonstrated by V\'eran for large bandwidth systems. Adding the covariance is equivalent to multiply by OTF. In practice we derive the aliasing OTF through a spatial frequencies modeling of the WFS and multiply this later to the residual OTF $\otf{\varepsilon}$. PSF-R on KECK using this kind of approach has been particularly looking into in \cite{Jolissaint2015}.
+
+\subsubsection{OTF NCPA}
+In Eq.~\ref{E:otfproduct}, NCPA are included in multiplying the OTF by the auto-correlation of the residual static phase after NCPA compensation~:
+\begin{equation}
+\otf{\text{NCPA}} = \mathcal{F}\cro{\mathcal{F}\cro{P(\rbb)\times\exp\para{i\phi_\text{NCPA}(\rbb)}}},
+\end{equation}
+
+\subsubsection{Anisoplanatism transfer functions}
+
+In Eq.~\ref{E:otfproduct}, the term ATF stands for Anisoplanatic transfer function as introduced by T. Fusco~(\cite{Fusco2000}) and denotes the anisoplanatism effect in the angular frequencies domain. Several sort of anisoplanatism are considered~:
+\begin{itemize}
+	\item[$\bullet$] \emph{angular anisoplanatism} that is produced by the angular separation between the science direction and the guide stars. 
+	\item[$\bullet$] \emph{focal anisoplanatism} that is created by the cone effect when sensing the atmospheric turbulence using a LGS. Geometrically speaking, the focal anisoplanatism results from the difference between the cone and the cylinder volume~: a part of the turbulence measured through the cone is not seen when comparing to the cylinder.
+	\item[$\bullet$] \emph{anisokinetism or tip-tilt anisoplanatism} is an angular anisoplanatism on tip-tilt modes only.
+\end{itemize}
+
+When observing a field using a LGS-based AO system, the anisoplanatism is a mix between this three types. See the KASP notes\#02 to get the way we can calculate the ATF in such a case. In a general approach, the anisoplanatic phase, as the difference of phase between the guide star direction and the science target, is defined as~:
+\begin{equation}
+\phi_\Delta(\rbb) = \phi_\text{src}(\rbb) - \phi_\text{gs}(\rbb),
+\end{equation}
+introducing the anisoplanatic covariance as:
+\begin{equation} \label{E:cov}
+\begin{aligned}
+C_\Delta(\rbun,\rbdeux) &= \aver{\phi_\Delta(\rbun)\phi^*_\Delta(\rbdeux)}\\
+&=  \aver{\phi_\text{src}(\rbun)\phi^*_\text{src}(\rbdeux)} + \aver{\phi_\text{gs}(\rbun)\phi^*_\text{gs}(\rbdeux)} - \aver{\phi_\text{src}(\rbun)\phi^*_\text{gs}(\rbdeux)}- \aver{\phi_\text{gs}(\rbun)\phi^*_\text{src}(\rbdeux)}\\ 
+&= C_\text{src}(\rbun,\rbdeux) + C_\text{gs}(\rbun,\rbdeux) - C_\text{src-gs}(\rbun,\rbdeux) - C^t_\text{src-gs}(\rbun,\rbdeux),
+\end{aligned}
+\end{equation}
+
+where covariance matrices involved in Eq.~\ref{E:cov} are computed analytically using the phaseStats class into OOMAO. When considering only angular anisoplanatism, the phase covariance does not depend on the space location of the pupil since the atmospheric turbulence itself is considered as a spatial stationary stochastic process. It implies $C_\text{src}$ and $C_\text{gs}$ are exactly identical.
+But in the case of focal anisoplanatism, the phase propagated through the cone and through the cylinder are not the same, $C_\text{src}$ and $C_\text{gs}$ are so different as well and need to be computed separately.
+
+The ATF is then computed as~:
+\begin{equation}
+\text{ATF}(\boldsymbol{u}/\lambda) = \Phi^{-1}\iint_{\mathcal{R}^2}\boldsymbol{d}\rbb P(\rbb)P^\ast(\rbb+ \boldsymbol{u}))\exp(C_\Delta(\rbb,\rbb + \boldsymbol{u}) - C_\Delta(0,0) ),
+\end{equation}
+where $\Phi^{-1} = \iint_{\mathcal{R}^2}\boldsymbol{d}\rbb P(\rbb)P^\ast(\rbb)$.
+
+Note the tomographic case is not treated there but results on the MOAO systems CANARY@WHT are provided here \cite{Martin2016JATIS}.
+\subsubsection{OTF fitting}
+We base the computation of this term on a Fourier approach, consisting in modeling the perpendicular phase PSD as the atmosphere Von-K\'arm\`an PSD free from low spatial frequencies lower than $k_c$ the DM-cut off frequency~:
+\begin{equation}
+\otf{\perp} = \exp(\mathcal{C}_{\perp}(\rhob) - \mathcal{C}_{\perp}(0) ),
+\end{equation}
+where $	\mathcal{C}_{\perp}(\rhob)$ is the covariance map derived by the phase PSD using the Wiener-Khintchine theorem~:
+\begin{equation}
+\mathcal{C}_{\perp}(\rhob) = \mathcal{F}\cro{\tilde{\Phi}_\text{atm}(\boldsymbol{k})\times {\Pi}_{k_c} },
+\end{equation}
+with ${\Pi}_{k_c}$ the gate function in the frequency domain~:
+\begin{equation}
+{\Pi}_{k_c}(\boldsymbol{k}) = \left\lbrace 
+\begin{aligned}
+& 0\quad \text{if}\quad k_x \leq k_c \: | \: k_y \leq k_c\\
+& 1\quad \text{else}
+\end{aligned}
+\right.
+\end{equation}
+
+\subsubsection{OTF aliasing}
+Aliasing error comes from the aliased phase that creates a signal and that is reconstructed onto the DM commands and affects the in-band correcting part of the AO PSF. We follow the same procedure as for the fitting error~:
+\begin{equation}
+\otf{\text{Alias}} = \exp(\mathcal{C}_{\text{Alias}}(\rhob) - \mathcal{C}_{\text{Alias}}(0) ),
+\end{equation}
+where the covariance map id derived from~:
+\begin{equation} \label{E:covalias}
+\mathcal{C}_{\text{Alias}}(\rhob) = \mathcal{F}\cro{\tilde{\Phi}_\text{Alias}(\boldsymbol{k})}
+\end{equation}
+The aliased phase results from the spatial sampling of the phase every $d$. The aliasing PSD is thus a sum of the initial spectrum shifted by an integer multiple of $1/d$. The calculation includes the filtering through the WFS reconstructor $\tilde{\R}$ and the AO system temporal transfer function $\tilde{\mathcal{T}}$ in closed-loop operations. Taking into account the latter term is possible when associating each temporal frequency to a spatial one by $f=k\times v$ where $v$ is the wind speed and for a Taylor-assumed turbulence. We end up with the final expression~:
+\begin{equation}
+\tilde{\Phi}_\text{Alias}(\boldsymbol{k}) = \module{\tilde{\R}(k_x,k_y)\times\tilde{\mathcal{T}}(k_x.v_x,k_y.v_y)}^2\times\para{\sum_{p=-\infty,\neq 0}^{\infty} \sum_{q=-\infty,\neq 0}^{\infty}\tilde{\Phi}_\text{atm}(k_x - p/d,k_y-q/d)}.
+\end{equation}
+
+\subsection{DM-based approach}
+
+In the case of systems with large degree of freedom, deriving $U_{ij}$ functions is quite computational demanding in terms of calculation power and memory. However, if we look at Eq.~\ref{E:Uij}, there's a way to not have to get through this calculation, in expressing the covariance in a point-wise fashion, i.e. in a zonal basis. In such a way the $\hi$ functions are Dirac distributions and term $\hi(\rbb) - \hi(\rbb+\rhob)$ values 0 for $\rhob$ different than $\rbb$, one otherwise and for any $i$. Finally $U_{ij}(\rhob)$ functions take the value of 1 for any $\rhob$: the OTF calculation becomes then a matter of estimating the covariance only in a zonal basis.\\
+
+On top of that, Eq.~\ref{E:otfveran} is based on the phase structure function averaged out over the pupil. This calculation assumes the residual phase is spatially stationary, in other words the variance of the residual phase difference between two positions depends only on the baseline separation and not on positions.  When dealing with LGS, the stationary assumption does not apply anymore. Because the cone effect, more turbulence is sensed at the pupil center compared to pupil edges, leading to a worse AO correction and a higher variance at the edges. To perform PSF-R in such a case, a 4D computation of the OTF is required as follows~:
+\begin{equation}
+		\otf{\varepsilon}(\boldsymbol{u}/\lambda) = \para{\Phi^{-1}\iint_{\mathcal{R}^2} P(\rbb)P(\rbb+ \boldsymbol{u}))\exp(\mathcal{C}_{\varepsilon}(\rbb,\rbb + \boldsymbol{u}) - \mathcal{C}_{\varepsilon}(0,0) )\boldsymbol{d}\rbb.} \times \otf{\text{NCPA}},
+\end{equation}
+where $\mathcal{C}_{\varepsilon}$ is derived as a sum of covariance terms derived on a zonal basis~:
+\begin{equation}
+\mathcal{C}_{\varepsilon} = \mathcal{C}_{\epspara} + \mathcal{C}_{\perp} + \mathcal{C}_{\text{Alias}} + \mathcal{C}_\Delta.
+\end{equation}
+
+In the 4D case, the covariance matrix is obtained by the covariance value between a phase sample with every others in the pupil. Each sub-diagonal of this matrix corresponds to a different baseline, in a manner the main diagonal of $N^2$ elements contains the variance of the phase samples discretized on a $N\times N$ grid. The sub-diagonal at its right contains the covariance of any sample with its direct right neighbor and so on. When the residual phase is really stationary, values on these sub-diagonals are exactly the same: the matrix gets Toeplitz properties and possesses only $N\times N$ non-redundant values. We can so reshuffle the matrix as a $N\times N$ map where pixels takes the mean value each matrix sub-diagonal corresponding to the baseline. This is what is done when computing the OTF from spatial frequencies for instance.\\
+
+When applying PSF-R on KECK data in NGS mode, we found the mean approximation does not lead to a real loss on the reconstruction as we could expect. In the LGS case, the mean approximation mostly impact the Strehl estimation with a over-estimation of 15~\%-ish. In the case of tomographic systems, we could expect the tomographic reconstruction to stationarize the residual phase across the pupil, allowing to make the mean approximation reasonable to decrease the calculation complexity. This hypothesis will be tested when applying PSF-R on tomographic systems.\\
+
+Finally, to speed up the PSF-R computation, in particular for tomographic systems gathering many measurements from several WFS, we investigate to decrease the level of data to be processed. A way to achieve that is to estimate the residual wave-front for the increment on DM commands. On a 6 74$\times$74 WFS system, we can approximately reduce the amount of data by a factor $75^2/(6\times74^2)\simeq 5$. Moreover, the phase reconstruction is done by the RTC in real time, so the meaning of redoing this calculation in post-processing is debatable. However, we suspect to loose a part of the information measured by the WFS when propagating measurements through the reconstruction matrix. For instance, if we have telescope vibrations and dome wind-shaking creating a large PSF jitter, we'd like to identify this effect, that should appear on tip-tilt measurements, and include it into the reconstruction. But this vibration energy will be probably compensated by the AO loop temporal filtering and we'll loose a part of the information presents in WFS measurements.\\
+
+The strategy is to test this method on the W.M. Keck AO system and make sure handle DM commands increments instead of WFS measurements does not drastically affect the reconstruction. If so, we hope to get insights on what information could help us to reconstruct properly the PSF in still reducing the level processed data. For instance we could imagine having DM-commands and tip-tilt measurements would be enough. A statistic evaluation of PSF-R using a slopes-based or a dm-based approach will allow to provide conclusions on this discussion. 
+
+
+%For the non-stationary case, this average approximation means we take the exponential value of the mean phase structure function instead of the mean of the exponential and lead to an underestimation of the OTF, as explain by V\'eran. In particular, He explained lowest angular frequencies are the most affected, corresponding to higher spatial frequencies on the PSF.
+
+\subsubsection{Parallel covariance}
+
+The classical approach deals with WFS slopes for estimating the phase through the reconstructor $R$. This step is already done by the RTC each integration time and does not need to be redone. The increment on DM commands~:
+\begin{equation}
+	\Delta\boldsymbol{u}= \dfrac{\boldsymbol{u}(k+1) - \boldsymbol{u}(k)}{g},
+\end{equation}
+allows to estimate the residual phase discretized on $N\times N$ samples by~:
+\begin{equation}
+	\widehat{\phi}_{\varepsilon_\parallel}(k) = \boldsymbol{h}\times \Delta\boldsymbol{u},
+\end{equation}
+where $\boldsymbol{h}$ is the DM influence functions reshaped as a $N^2\times n_\text{act}$-size matrix with $n_\text{act}$ the number of controlled actuators. The covariance of the residual phase in the AO-correction band takes the form~:
+\begin{equation}
+	\mathcal{C}_{\epspara} = \boldsymbol{h}\times \para{\aver{\Delta\boldsymbol{u}\Delta\boldsymbol{u}^t} - \mathcal{C}_n}\times \boldsymbol{h}^t.
+\end{equation}
+
+
+\subsubsection{Fitting covariance}
+From the seeing value previously estimated using the AO telemetry or DIMM measurements~(see KASP notes\#05), we generate atmospheric turbulence phase screens following a Von-K\'arm\'an statistics and concatenated into a $N\times N\times n_f$-size $\phi^s$. Each screen is temporally independent to others. The perpendicular phase including high spatial frequencies beyond the DM cut-off frequency is derived for each frame by~:
+\begin{equation}
+\widehat{\phi}_{\perp} = \mathcal{H}_\text{DM}\times\phi^s,
+\end{equation}
+where $\mathcal{H}_\text{DM}$ is the DM zonal filter~:
+\begin{equation}
+	\mathcal{H}_\text{DM} = \boldsymbol{I}_{N^2} - \boldsymbol{h} \times  \boldsymbol{h}^{\dagger}.	
+\end{equation}
+In the previous equation, it appears we need to calculate $\boldsymbol{h}^{\dagger} $ as the inverse of the DM modes. By decomposition these modes onto the singular modes basis, we get~:
+\begin{equation}
+	\boldsymbol{h} = \boldsymbol{U} \times \boldsymbol{\Sigma} \times \boldsymbol{V}^t,
+\end{equation}
+and its inverse transposed comes naturally by~:
+\begin{equation}
+\boldsymbol{h}^{\dagger} = \boldsymbol{V} \times \boldsymbol{\Sigma}^{-1} \times \boldsymbol{U}^t,
+\end{equation}
+allowing to write the perpendicular phase as~:
+\begin{equation}
+	\widehat{\phi}_{\perp} = \para{\boldsymbol{I}_{N^2} - \boldsymbol{U}\boldsymbol{U}^t}\times\phi_s.
+\end{equation}
+The covariance matrix of the fitting error is derived straightforwardly by averaging the perpendicular phase over the $n_f$ temporal samples~:
+\begin{equation}
+	\mathcal{C}_\perp = \aver{\widehat{\phi}_{\perp}\widehat{\phi}^t_{\perp}}.
+\end{equation}
+
+\subsubsection{Aliasing}
+Using the same principle as for the fitting error, we have a collection of $n_f$ phase screen $\phi^s_\perp$ where the spatial frequencies below $1/2d$, with $d$ the sub-aperture size, have been filtered out. We then present these screen to the WFS operator $\boldsymbol{G}$ that is designed to calculate the phase gradient at each sub-aperture size to derive the WFS slopes~:
+\begin{equation}
+	\boldsymbol{s}_\text{alias} = \boldsymbol{G}\times\phi^s_\perp.
+\end{equation}
+Operator $\boldsymbol{G}$ is provided as a synthetic matrix. The aliasing process creates a signal despite the phase measured by the WFS contains higher spatial frequencies than it's capable of sensing. This signal is then reconstructed through the reconstructor and the DM modes to get the phase~:
+\begin{equation}
+\widehat{\phi}_\text{alias} = \boldsymbol{h} \times \R \times \boldsymbol{s}_\text{alias}.
+\end{equation}
+The covariance matrix of the aliasing comes as follows~:
+\begin{equation}
+\mathcal{C}_\text{alias}= \aver{\widehat{\phi}_{\text{alias}}\widehat{\phi}^t_{\text{alias}}}.
+\end{equation}
+Note this calculation of the aliasing term does not take into account any temporal filtering that exists in real, but that can be mitigated using the large-bandwidth assumption proposed by V\'eran. A sub-simulation of the considered AO system in presenting only the perpendicular phase is a way to get a better estimation of the aliasing error, but both simulations and Fourier calculations have shown that ignoring the temporal propagation of the aliasing is not impacting noticeably the reconstruction.
+ 
+\section{Applications to KECK }
+\subsection{PSF-R class}
+
+The PSF reconstruction algorithm is embedded into the KASP infrastructure. The main idea is to create an aoSystem class~(see KASP notes\#01) that describes all the AO system, telescope and atmosphere, that is then passed to the \emph{psfR} class that is designed to perform the reconstruction according a certain set up decided by the user.
+
+The aoSystem class allows to simulate the AO system and store the telemetry and PSF to perform the reconstruction and compare with simulation outputs. When dealing with on-sky data, the idea is to call a function whose purpose is to grab on-sky data~(as WFS slopes DM commands, PSF and so on) to be set into the aoSystem class. For Keck, there's the routine \emph{instantiateKeckSystemClass} that takes as arguments the aoSystem class previously instantiated from the set parameters, the path where data are saved, the object name~('n0004' for instance), the suffix~('fullNGS' or 'LGS') and the saving path for MASS/DIMM data.
+
+The user is allowed to create his own routine to put into the aoSystem class what he wants. The psfR class can be called by the following piece of code below.
+
+\begin{center}
+	\framebox{
+		\begin{minipage}{0.99\columnwidth}
+			\textcolor{blue}{
+				\begin{tabular}{ll}
+				sys  &= aoSystem('KeckNGSonaxis','isSimu',false,'flagGaussian',true);\\
+				sys  &= instantiateKeckSystemClass(sys,pathData,'n0004','fullNGS',pathMassDimm);\\
+				psfr &=  psfR(sys,'flagGaussian',true);\\
+				pr   &= psfr.getPSF('fov',3,'cLim',[-5,0],'approach','new','samplingDomain','zonal','method','dm-based');
+			\end{tabular}}
+		\end{minipage}
+	}
+\end{center}
+
+The psfR class provides the reconstructed psf embedded into a \emph{psfStats} class gathering the image and its characteristics~(Strehl ratio, FWHM, ensquared energy, relative photo-astrometry accuracy). See KASP notes\#04 to get more details on how these parameters are computed. Get the PSF requires the user to call the routine \emph{getPSF} that is going to process the telemetry and calibrations to reconstruct the PSF, following inputs arguments defined by the user~:
+\begin{itemize}
+	\item[$\bullet$] \emph{approach}~: 'new' for deploying the DM-based method and 'old' for the classical one
+	\item[$\bullet$] \emph{method}~: 'dm-based', slopes-based', 'recPhase' our 'Fourier'. Define which part of the telemetry is going to be processed for computing the parallel covariance matrix~: the DM commands increments, the WFS slopes or directly the reconstructed phase. All these three methods are supposed to provide the same results so far the units (reconstructed phase in wave-front) are the same. For the Fourier case, the PSF is estimated through the modeling of the residual phase PSD.
+	\item[$\bullet$] \emph{samplingDomain}~: 'modal' or 'zonal'. Allows a 2D computation using the Vii approach or a direct 4D computation of the OTF. Available for both approaches.
+	\item[$\bullet$] \emph{nSrc}~: set the number of science direction to reconstruct PSF in. If set to 1, the psfR is going to reconstruct the PSF only in the direction provided by the source class src(1) carried in the aoSystem class. If nSrc is set to 2, it's providing PSF in the two first direction appearing the source class and son on.
+	\item[$\bullet$] \emph{fov}~: field of view in arc-seconds to be displayed in the end. If higher than the simulated/on-sky PSF field of-view, it is set automatically to this limit.
+	\item[$\bullet$] \emph{cLim}~: array giving the y-scale values [min max]-limits in log-scale when displaying the PSF. Could be [-5,0] for instance.	
+\end{itemize}
+If none inputs arguments are provided by the users, the command line \emph{psfr.getPSF()} will return the reconstructed PSF using the new approach coupled with the DM-based method.
+
+\subsection{Results}
+
+We present in this section two set of data that have been processed to reconstruct the PSF using the DM-based method described earlier. The first one is the NGS case 'n0004' acquired  in August 2013, while the second one is a LGS case 'n0030' acquired in March 2017.
+
+Tables~\ref{T:errors} and~\ref{T:stats} summarize a evaluation of PSF-R results using scalar metrics. The error breakdown is detailed and PSFs are compared in terms of Strehl ratio, FWHM, ensquared energy and rms value of the reconstruction residual. Figs.~\ref{F:n0004} and~\ref{F:n0030} display a comparison between sky PSF and reconstructed ones.\\
+
+Results show good agreement in terms of scalar value and PSF profile~(azimuthal average). We still have some residual speckles not well compensated, probably because NCPA map that could be not well included for some reasons (to be prospected). On the LGS case, we notice a higher ellipticity than on-sky~: the tip-tilt level is set using a fudge factor because mis-knowledge of units. There're probably different things compensating each other that allow to produce a good profile and a good Strehl ratio value, still need to check it out.\\
+
+Data acquired in 2013 and 2017 are going to be statistically processed, using the DM-based approach, and compare to the sky PSF. In particular, we'll estimate the relative photo-astrometry accuracy reached by the PSF-R.\\
+ 
+\section{Conclusions}
+
+We have detailed a new PSF-R method dealing with DM commands increment and off-line simulations to reconstruct the PSF. This facility is easy to use through the psfR class embedded into KASP and has deliver good preliminary results on both NGS and LGS image acquired with NIRC2@WMKO.
+
+\bibliographystyle{plain} 
+\bibliography{/home/omartin/Documents/Bibliography/biblioLolo}
+\vspace{2cm}
+
+\begin{minipage}{0.4\columnwidth}
+	\centering
+	\begin{tabular}{|c|c|c|}
+		\hline
+		Errors [nm] & n0004 & n0030\\	
+		\hline
+		NCPA & 119& 162\\
+		\hline
+		Telemetry &70 & 288\\
+		\hline
+		Anisoplanatism &0& 180\\
+		\hline
+		High order & 54& 152\\
+		\hline
+		Tip-tilt & 50& 246\\	
+		\hline
+		Fitting & 120& 92\\
+		\hline
+		Aliasing & 85& 50\\
+		\hline
+	\end{tabular}
+\captionof{table}{Error breakdowns provided by the psfR class when reconstructing the PSF. }
+\label{T:errors}
+\end{minipage}
+\hspace{.25cm}
+\begin{minipage}{0.6\columnwidth}
+	\centering
+	\begin{tabular}{|c|c|c|c|c|}
+		\hline
+		PSF metrics & \multicolumn{2}{c|}{n0004} & \multicolumn{2}{c|}{n0030} \\
+		\hline
+		 & Sky& PSF-R & Sky & PSF-R \\
+		 \hline
+		Strehl ratio [\%] &52.9 & 56.1 & 25.6&29\\
+		\hline
+		FWHM [mas] & 36.3& 33.3 &80.6 &76\\
+		\hline
+		Ellipticity & 1.03& 1.03& 1.21&1.4\\
+		\hline
+		EE at 10$\lambda/D$ [\%] & 75.2& 71.5& 74.6&73.5\\
+		\hline
+		Flux [counts] & 1.3e7& 1.3e7&1.6e+06 &1.6e+06\\	
+		\hline
+	\end{tabular}
+\captionof{table}{PSF metrics estimated on both on-sky image and reconstructed PSF. }
+\label{T:stats}
+\end{minipage}
+
+\begin{figure}[h!]
+	\centering
+	\includegraphics[scale=0.6]{/home/omartin/Projects/KASP/Results/PSFR/onSky/20130801/figures/n0004PSF_new.pdf}
+	\caption{Reconstructed PSF versus on-sky PSF acquired with NIRC2@WMKO in August 2013 in NGS mode. The file processed here is the 'n0004' one.}
+	\label{F:n0004}
+\end{figure}
+
+\begin{figure}[h!]
+	\centering
+	\includegraphics[scale=0.6]{/home/omartin/Projects/KASP/Results/PSFR/onSky/20170314/figures/n0030.pdf}
+		\caption{Reconstructed PSF versus on-sky PSF acquired with NIRC2@WMKO in August 2017 in LGS mode. The file processed here is the 'n0030' one.}
+			\label{F:n0030}
+\end{figure}
+
+\end{document}

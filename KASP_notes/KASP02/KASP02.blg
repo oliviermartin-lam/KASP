@@ -1,0 +1,50 @@
+This is BibTeX, Version 0.99d (TeX Live 2014)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: KASP02.aux
+The style file: plain.bst
+Database file #1: /home/omartin/Documents/Bibliography/biblioLolo.bib
+Warning--empty institution in Flicker2008
+Warning--can't use both author and editor fields in Rigaut1998
+Warning--empty publisher in Rigaut1998
+You've used 5 entries,
+            2118 wiz_defined-function locations,
+            535 strings with 4959 characters,
+and the built_in function-call counts, 1710 in all, are:
+= -- 163
+> -- 73
+< -- 2
++ -- 29
+- -- 24
+* -- 130
+:= -- 286
+add.period$ -- 15
+call.type$ -- 5
+change.case$ -- 27
+chr.to.int$ -- 0
+cite$ -- 8
+duplicate$ -- 66
+empty$ -- 131
+format.name$ -- 24
+if$ -- 356
+int.to.chr$ -- 0
+int.to.str$ -- 5
+missing$ -- 5
+newline$ -- 28
+num.names$ -- 10
+pop$ -- 25
+preamble$ -- 1
+purify$ -- 22
+quote$ -- 0
+skip$ -- 48
+stack$ -- 0
+substring$ -- 109
+swap$ -- 18
+text.length$ -- 2
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 18
+warning$ -- 3
+while$ -- 15
+width$ -- 6
+write$ -- 56
+(There were 3 warnings)

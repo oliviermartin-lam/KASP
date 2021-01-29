@@ -1,0 +1,368 @@
+\documentclass[12pt]{article}
+
+%\renewcommand{\baselinestretch}{1.65}
+\usepackage{amsmath,graphicx,bbm,amssymb}
+\usepackage{txfonts}
+\usepackage{array}
+\usepackage{subfigure}
+\usepackage{caption}
+\usepackage{color}
+\usepackage{tikz}
+\usetikzlibrary{arrows} 
+\usetikzlibrary{shapes.multipart}
+\usetikzlibrary{shapes.misc, positioning}
+\usepackage{float}
+\usepackage{calc}
+\usepackage{multirow}
+\usepackage{fancyhdr}
+\usepackage{colortbl}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage[hmargin=1.5cm, top=2cm, bottom=2cm]{geometry}
+
+\newcommand{\procspie}{Proc. SPIE } 
+\newcommand{\pasp}{Publications of the Astronomical Society of the Pacific } 
+\newcommand{\aap}{Astron. \& Astrophys. } 
+\newcommand{\mnras}{M.N.R.A.S } 
+
+\newcommand{\module}[1]{\left\vert #1 \right\vert}
+\newcommand{\norme}[1]{\left\vert\left\vert #1 \right\vert\right\vert}
+\newcommand{\para}[1]{\left(#1\right)}
+\newcommand{\cro}[1]{\left[#1\right]}
+\newcommand{\aver}[1]{\left\langle #1 \right\rangle}
+\newcommand{\bra}[1]{\left\lbrace #1 \right\rbrace}
+\newcommand{\xth}[1]{#1^{\text{th}}}
+\newcommand{\otfdl}{\text{OTF}_\text{DL}}
+
+\newcommand{\rz}{r_0}
+\newcommand{\lz}{L_0}
+\newcommand{\cnh}{C_n^2(h)}
+\newcommand{\nwfs}{\text{n}_\text{wfs}}
+\newcommand{\R}{\boldsymbol{\text{R}}}
+\newcommand{\Mc}{\boldsymbol{\text{M}_c}}
+\newcommand{\thSrc}{\boldsymbol{\theta}_\text{src}}
+\newcommand{\thGs}{\boldsymbol{\theta}_\text{gs}}
+\newcommand{\thNgs}{\boldsymbol{\theta}_\text{ngs}}
+\newcommand{\thLgs}{\boldsymbol{\theta}_\text{lgs}}
+\newcommand{\rbb}{\boldsymbol{r}}
+\newcommand{\rbun}{\boldsymbol{r}_1}
+\newcommand{\rbdeux}{\boldsymbol{r}_2}
+\newcommand{\rhob}{\boldsymbol{\rho}}
+\newcommand{\TTout}{\boldsymbol{\text{TT}}_\text{out}}
+\newcommand{\TTonly}{\boldsymbol{\text{TT}}_\text{only}}
+
+\title{KASP Technical notes \#05:\\ Keck AO telemetry processing pipeline}
+\author{O. Beltramo-Martin\footnote{olivier.martin@lam.fr}, C.~M. Correia}
+\date{}
+
+% Option to view page numbers
+%\pagestyle{plain} % change to \pagestyle{plain} for page numbers   
+\setcounter{page}{1}
+\fancyhead[LO,LE]{KASP Technical notes \#05}
+\fancyhead[RE,RO]{O. Beltramo-Martin}
+\pagestyle{fancy} 
+\setlength{\parindent}{0cm}
+
+\begin{document}
+
+
+\maketitle
+\rule{\columnwidth}{0.1mm}
+\tableofcontents
+\rule{\columnwidth}{0.1mm}
+\section{Purpose}
+
+We describe in this KASP note the overall processing of the KECK AO telemetry, acquired upstream from the KECK Wave-Front Controller~(WFC) and stored into the Telemetry recording structure~(TRS). The AO telemetry is distributed into the class systemSimulator properties in the purpose of being passed to the psfR class that is going to perform the PSF reconstruction from on-sky data. We get through all the steps from the TRS data to the psfR-complient format of the telemetry.
+
+\section{TRS data description}
+
+The  AO  telemetry  required  for  PSF  reconstructions  for  each  science  exposure  are  extracted  from  the 
+wavefront controller and stored as IDL save file. i.e. one telemetry file for each science exposure. The 
+filename  has  similar  nomenclature  as  the  science  filename.  For  instance,  the  telemetry  filename  for 
+NIRC2  file  'n0032.fits'  would  be  either  'n0032\_NGS\_trs.sav'  or  'n0032\_LGS\_trs.sav'  depending  on  the 
+mode of operation (NGS or LGS.) The list of all variables in the telemetry file for the LGS case is should 
+below~: 
+\begin{table} [H]
+	\begin{tabular}{llll}
+		A			& [1x1 struct]		&DTT\_OFFSET		& [2x1 single]\\
+		B 			&[1x1 struct] 		& TSTAMP\_NUM		& 936932322345282304\\
+		CID			& 908453827 		&TSTAMP\_STR\_START	& '2013-08-01T11:59:45.221'\\
+		NREC		& 1 				& CENT\_G			& [1x1 struct]\\
+		RX			& [214016x1 single] & DM\_SERVO			& [7x1 single]\\
+		CENT\_ORIGIN& [608x1 single] 	&DT\_SERVO			& [7x1 single]\\
+		DM\_ORIGIN	& [349x1 single] 	&UID				& 35911 \\
+	\end{tabular}	
+\end{table}
+
+The  data  structure  A  and  B  are  ones  holding  the  time  varying  AO  control  loop  telemetry  data.  The 
+structure A holds the WFS data and structure B holds the STRAP tip/tilt data essential for the LGS case. 
+Accordingly  the  telemetry  file  for  the  NGS  case  won’t  have  the  data  structure,  B.  The  variables  in  the 
+data structure A are shown below~: 
+\begin{table} [H]
+	\begin{tabular}{llll}
+ CONF\_ID 			& [35912x1 uint32] 		& DMCOMMANDSCLIPPED 	& [35912x1 uint32]\\
+TIMESTAMP 			& [35912x1 uint64]		& RESIDUALRMS 			& [35912x1 single]\\
+SUBAPINTENSITY		& [304x35912 single]	& TTCOMMANDS 			& [2x35912 single]\\
+OFFSETCENTROID 		& [608x35912 single] 	& TTSTRAINGAUGE 		& [3x35912 single]\\
+RESIDUALWAVEFRONT 	&[352x35912 single] 	& TTCOMMANDSCLIPPED 	& [35912x1 uint32]\\
+DMCOMMAND 			&[349x35912 single] 	& 						&
+\end{tabular}	
+\end{table}
+
+where the data stored in the TRS structure used in the purpose of PSF reconstruction are referenced below~:
+\begin{table}[H]
+	\centering
+\begin{tabular}{|p{5cm}|p{7cm}|p{4cm}|}
+	\hline
+	\textbf{Telemetry Channel Name} & \textbf{Description} & \textbf{Unit} \\
+	\hline
+	SUBAPINTENSITY & Dark-subtracted  and  flat  field  corrected sub-aperture intensity & ADU \\
+	\hline
+	OFFSETCENTROID & Centroid  offset  for  the  304  sub-apertures~:  [$x_1$ ,$y_1$ ],  [$x_2$ ,$y_2$ ],  .... 
+	[$x_{304}$,$y_{304}$] & arcsec\\
+	\hline	
+	\multirow{4}{3cm}{RESIDUAL WAVEFRONT} & Residual wavefront.&\\
+	& [1:349,:]:  residuals  at  the  349  actuators & volts\\
+ &	[350:351,:]: residual tip/tilt & arcsec\\
+&	[352,:]: residual defocus \hfill & microns\\
+	 \hline
+	DMCOMMAND & DM actuator command  &volts (0.6 microns/volt)\\
+	\hline
+	TTCOMMANDS & Down Tip/tilt actuator command  & arcsec \\
+	\hline 	
+	CENT\_G  & Centroid  gain  for  the  349 actuators & arcsec/pixel\\
+	\hline 
+	CENT\_ORIGIN  &  Centroid  origin  for  the  304 sub‐apertures & pixel\\ 
+	\hline 
+	DM\_SERVO & DM servo parameters & \\	
+	\hline 
+	DT\_SERVO & Down TT servo parameters & \\		
+	\hline 
+	HEADER  & NIRC2 science header & \\	
+	\hline 
+	TSTAMP\_STR\_START & Start time &\\
+	\hline 
+\end{tabular}
+\end{table}
+
+\section{Telemetry handling process}
+\subsection{Valid sub-apertures and actuators}
+
+From the TRS facility we have access to all valid slopes~(608) and actuators~(349), but only some of them are really controlled during AO operations. Particularly only the 240 brightest sub-apertures are feeding the reconstruction leading to 288 controlled actuators effectively. The locations of those brightest sub-aperture is evolving with time because the pupil rotation with respect to the sky and potentially temporal evolution of pupil mis-registrations.\\
+
+Fortunately sub-aperture intensity as function of time is stored into the TRS structure. Considering we're dealing with short horizon time data~(30 s.), we assume the handled sub-apertures were the same during operations. Here is a piece of code for determining the 240 brightest sub-aperture below.\\
+
+These maps illustrated in Fig.~\ref{F:ctrl} are then providing to the reshuffling process for selecting only the controlled actuators for PSF reconstruction purpose.
+\begin{center}
+	\framebox{
+		\begin{minipage}{0.95\columnwidth}
+			\textcolor{blue}{
+				\begin{tabular}{ll}
+					obj.nSubAp &= 240;\\
+					nL           &= obj.wfs.lenslets.nLenslet;\\
+					subapIntensity       &= mean(trs.A.SUBAPINTENSITY,2);\\
+					tmpcrl\_s            &= zeros(nL);\\       
+					$[$tmp,idxFlux$]$    &= sort(subapIntensity);\\
+					idxS                 &= find(obj.validSubApMap(:));\\
+					idx                  &= idxFlux(tmp $>=$ tmp(end-obj.nSubAp+1));\\
+					tmpcrl\_s(idxS(idx)) &= 1;\\
+					obj.wfs.validLenslet &= tmpcrl\_s;
+				\end{tabular}				}
+	\end{minipage}
+}
+\end{center}
+
+
+\begin{figure} [H] 
+	\centering
+	\includegraphics[scale=0.44]{/home/omartin/Projects/KASP/Results/PSFR/onSky/20130801/trsProcessing/controlSubap.pdf} \hspace{1cm}
+	\includegraphics[scale=0.44]{/home/omartin/Projects/KASP/Results/PSFR/onSky/20130801/trsProcessing/controlActu.pdf}
+	\caption{ Map of controlled WFS sub-apertures(\textbf{Left}) and DM actuators~(\textbf{Right}).}
+	\label{F:ctrl}
+\end{figure}
+
+\subsection{Reconstruction matrix}
+
+The reconstructor $R$ = trs.Rx is stored as a single dimensional vector but must be reshape as a matrix sizing 608$\times$352, allowing to access the tip-tilt removed reconstructor $R_\text{HO} = R(:,1:349)$, the tip-tilt reconstructor $R_\text{TT} = R(:,350:351)$ and the focus reconstructor $R_\text{foc} = R(:,352)$.\\ 
+
+The reconstructor results from the interaction matrix inversion after filtering of non-controlled sub-aperture. The indexes of used ones are provided by the command line $\text{idx}_\text{ctrls} = \text{find}(R_\text{HO}(:,1))$ that is a vector of 480 elements confirming only 240 sub-apertures are handled for reconstructing the DM commands. As displayed on Fig.~\ref{F:reconstructor}, the singular values decomposition of this matrix is quickly dropping down to zero after mode 288 meaning we have indeed this amount of controlled actuators. Note this reconstructor must be designed for filtering out tip-tilt modes.
+
+\begin{figure}[H] 
+	\centering
+		\includegraphics[scale=0.42]{/home/omartin/Projects/KASP/Results/PSFR/onSky/20130801/trsProcessing/reconstructor_n0004_svd.pdf}
+		\caption{ Singular values decomposition of the high-order reconstructor.}
+		\label{F:reconstructor}
+\end{figure}
+
+\subsection{Reshuffling}
+
+Keck AO telemetry is stored through the IDL-based TRS routine while KASP is an Matlab-based architecture. It exists a very convenient and friendly Matlab routine named \href{https://fr.mathworks.com/matlabcentral/fileexchange/43899-restore-idl}{\emph{restore\_idl}} permitting to load IDL saving structure in .sav to a matlab structure.\\
+
+Nevertheless matrices indexes in IDL and Matlab are counted differently~: from left-down corner to right-up one in IDL and from left up corner to right down one for Matlab. On top of that, we have to select a certain number of slopes and actuators that are controlled during observations. The position of those are providing in the Matlab fashion but does not correspond to the real position in the system. For instance, the first actuator on Matlab corresponds to actuator number 381 on the real system and leads to a mis-selection of controlled actuators for PSF-reconstruction downstream.\\
+
+The option we've chose is to reshuffle and select controlled values in the same time for all arrays/matrices provided by the TRS structure~(slopes, commands, reconstructors) as illustrated by the piece of code bellow.
+\begin{center}
+	\framebox{
+		\begin{minipage}{0.95\columnwidth}
+			\textcolor{blue}{
+				\begin{tabular}{ll}
+					\underline{\% defining indexes grids} & \\
+					gridMatlab & = zeros(N);\\
+					for i=1:N$^2$ & \\
+					 \hspace{.5cm} gridMatlab(i) &= i; \\
+					end           &\\
+					gridIDL    &= flip(gridMatlab').*indexValidMatlab; \\           
+					\underline{\% defining valid actuators} & \\
+					v          &= sort(gridIDL(gridIDL~=0));\\
+					for k=1:length(v(:)) & \\
+					\hspace{.5cm} id\_l(k)    &= find(gridIDL==v(k));\\
+					end & \\
+					\underline{\% reshuffling and selecting controlled actuators only} & \\
+					coefsMatlab  &= coefsIDL(id\_l,:);
+			\end{tabular}				}
+		\end{minipage}
+	}
+\end{center}
+
+This operations has the consequence of applying a horizontal+vertical mirror translation on values for associating actuators commands to the influence functions at the real location~: the first element into the new set of commands is set to be actuator \# 381 (all actuator considered)  that is the one at the top-left corner on the real system. This reshuffling step is also performed on dm modes to be sure the influence function of the first mode is at the down left corner.
+
+\subsection{Residual NCPA}
+
+\begin{minipage}{0.4\columnwidth}
+	\centering
+		\includegraphics[scale=0.3]{/home/omartin/Projects/KASP/Results/PSFR/onSky/20130801/trsProcessing//ncpa2013.pdf}
+		\captionof{figure}{Map of the residual NCPA phase calibrated in 2013. Color bar is given in nm rms.}
+		\label{F:ncpa}
+\end{minipage}	
+\hspace{.5cm}
+\begin{minipage}{0.52\columnwidth}
+In 2013, the NCPA have been evaluated to create 250~nm-ish of residual phase error on the downstream focal plane. After calibration and compensation by modifying the WFS reference slopes of those residual, the final error drops down to 70~nm rms, but is still composed by low frequencies components as shown in Fig.~\ref{F:ncpa}.\\
+
+End-to-end simulations with KASP are allowed to include residual phase from external calibration, directly added to the electric field phase in the science direction before get measured by the science camera. About PSF-reconstruction, KASP is taking into account NCPA as well by computing the NCPA OTF from, either the residual phase map or the best PSF acquired on testbed operations.
+
+\end{minipage}
+
+\subsection{Reconstructed residual wavefront}
+
+The TRS structure offers directly the reconstructed wavefront in the actuators domain. To make sure we understand properly those data, we'll compare residual errors from the TRS reconstructed wavefront to alternatives calculations, as the product reconstructor times slopes~($R\times s$) and the increment on DM commands. The direct product $R\times s$ must provide the same quantity than providing into the TRS structure, while the DM increments forgets about system latency but must estimate a very similar residual wavefront. \\
+
+We compare in Table.~\ref{T:rmsOPD} evaluations of residual errors using those three different techniques. It becomes clear all of them are producing not compatible results on tip-tilt. Moreover, the reconstruction of the residual wavefromt from slopes through the reconstructor looks suffering by an optical gain. When adding the fitting and aliasing contribution to Strehl AO+NCPA, the first method provides an estimation of the Strehl extremely similar to NIRC2 image. We might think the third method will provide consistent results from Tab.~\ref{T:rmsOPD} but we still have to determine why the second method is that overestimating the residual error.
+
+\begin{table}[h!] 
+	\centering
+	\begin{tabular}{|c|c|c|c|}
+		\hline
+		Method & TRS & $R \times s$& $(u_k - u_{k-1})/g$\\
+		\hline
+		residual HO [nm rms] & 122 & 178 & 122 \\						
+		\hline
+		residual TT [nm rms] & 86 & 99 & 70  \\
+		\hline
+		Strehl AO @H & 72& 55& 75\\
+		\hline
+		Strehl A0+NCPA & 68 &51 & 70 \\
+		\hline
+		Strehl NIRC2 & \multicolumn{3}{c|}{56.1 $\pm$ 2.1} \\
+		\hline
+	\end{tabular}
+		\caption{Residual error on high-order/tip-tilt modes defined on the controlled DM actuators basis and Strehl ratios for three different methods of evaluation.}
+		\label{T:rmsOPD}
+\end{table}
+
+\section{Downstream estimations for PSF reconstruction}
+\subsection{Seeing value}
+The atmosphere seeing is measured by the \href{http://mkwc.ifa.hawaii.edu/current/seeing/}{DIMM external profiler} at MaunaKea. The $\rz$ value is then derived straightforward by~:
+\begin{equation}
+	\rz = \dfrac{0.976\times(3600\times180/\pi)\times\lambda}{\text{seeing}_\text{dimm}}.
+\end{equation}
+
+Unfortunately, the seeing value at MaunaKea is not systematically available for every night, calling for internal method to estimate the seeing. We base our approach on a least-square fitting of the $\rz$ and $\lz$ values on Zernike polynomial variance.The vector of variance in radian$^2$ from the nMin radial order up to the nMax one is derived from the DM commands~(tip-tilt removed) using the piece of code below.
+\begin{center}
+	\framebox{
+		\begin{minipage}{0.95\columnwidth}
+			\textcolor{blue}{
+				\begin{tabular}{ll}					
+					\underline{\% DM commands to Zernike} & \\
+					\% Circular pupil\\
+					zern &= zernike(nMin:nMax,'resolution',nResTel); \\	
+					\% Hexagonal pupil\\
+					zernP  & = zernike(nMin:nMax,'resolution',nRes,'pupil',tel.pupil);\\
+					zModes &= zern.modes; \\
+					zpModes&= zernP.modes;\\
+					\% Circle to hexagon projection \\
+					proj   &= (zpModes' * zpModes)/zpModes'*zModes; \\
+					u2z  &= proj*pinv(full(zern.modes))*dmModes;\\
+					z    &= u2z*u;\\
+					\underline{\% Noise estimation} & \\
+					covNoise &= diag(psfrTools.getNoiseVariance(u,noiseMethod));\\
+					\underline{\% Zernike variance distribution;} & \\
+					varZ   &= rms(z,2)\textasciicircum 2 - diag(u2z*covNoise*u2z');\\
+					varZ   &= varZ*(2*pi/wvl)\textasciicircum 2;									
+			\end{tabular}}
+		\end{minipage}}
+\end{center}
+
+The variance of Zernike modes derived from DM commands is then provided to a least-square fitting procedure delivering the couple of estimated $r_0, L_0$ and the uncertainties on estimations. This procedure is included into the \emph{profiler class}, dedicated to either read the MASS/DIMM profile from the \href{http://mkwc.ifa.hawaii.edu/current/seeing/}{Mauna kea weather center} or determine the seeing by the fitting procedure. It offers the possibility to fit a pure Kolmogorov atmosphere distribution and test the minimization procedure in varying nMin for getting the lowest joint $r_0/L_0$ uncertainty. If available, we use the value measured by the DIMM for PSF reconstruction operations.
+
+
+ 
+\subsection{$\cnh$ profile}
+Knowledge of the $\cnh$ profile is mandatory to reconstruct the PSF from AO telemetry to anywhere in the field. In the case of engineering observations on-axis, only the seeing value matters, otherwise we may include both angular anisoplanatism~(NGS observations) or tip-tilt plus focal anisoplanatism~(LGS + TT). See the KASP note \#02 about the way this inclusion step is done.
+
+When required the $\cnh$ profile is determined from the \href{http://mkwc.ifa.hawaii.edu/current/seeing/}{MASS/DIMM external profiler}  at MaunaKea provided the $\cnh$ at 500~m, 1, 2, 4, 8 and 16~km and the seeing in that range of altitude bins as well by~:
+\begin{equation}
+	\text{seeing}_\text{mass} = \dfrac{0.976\times3600\times180\times\lambda}{\pi}\times\para{0.423\times\para{\dfrac{2\pi}{\lambda}}^2\times \sum_{l=1}^{6} C_n^2(h_l) }^{3/5},
+\end{equation} 
+where $\text{seeing}_\text{mass}$ includes the seeing above 500~m up to 16~km. Also, we have the DIMM seeing providing the entire seeing of the turbulence. Assuming the difference on the two measurements is created by the ground layer located at 0~km, the seeing of this one is derived by~:
+\begin{equation}\label{E:groundseeing}
+	\text{seeing}_\text{0} = \para{\text{seeing}^{5/3}_\text{dimm} - \text{seeing}^{5/3}_\text{mass}}^{3/5}.
+\end{equation}
+Estimating the ground layer seeing following Eq.~\ref{E:groundseeing} won't affect the calculation of the fitting and aliasing error for PSF reconstruction purpose, but can drastically underestimate the anisoplanatism effect~: the same amount of energy will produce a large anisoplanatism effect when associated to higher altitude layers. That's why we must know whether last bin from the MASS profile includes higher altitude layer energy,
+in which case this underestimation is mitigated, but still existing.
+
+The PSF reconstruction algorithm is then fed by the altitude bins located at 0,0.5,1,2,4,8 and 16~km with a fractional energy defined by~:
+\begin{equation}
+	f_l \triangleq \left\lbrace
+\begin{aligned}
+&\dfrac{\text{seeing}_0^{5/3}}{\text{seeing}^{5/3}_\text{dimm}} \quad\:\:\:\:\text{if $l=1$}\\
+& \dfrac{\mu_0\times C_n^2(h_{l-1})}{\text{seeing}^{5/3}_\text{dimm}} \quad\text{else,}
+\end{aligned}
+\right.
+\end{equation}
+where $\mu_0 = 0.423\times(3600\times180\times0.976)^{5/3}\times4\pi^{1/3} \times\lambda^{-1/3}$. We thus redefine a new $C_n^2(h)$ profile on a 7-layers baseline as~:
+\begin{equation}
+	C_n^2(h_l) \triangleq \dfrac{\text{seeing}^{5/3}_\text{dimm}}{\mu_0}\times \sum_{l=1}^{7}f_l\delta(h-h_l),
+\end{equation}
+where $\delta(h)$ is the Dirac distribution and $\sum_l f_l = 1$. Note that if a layer is associated to a very low fraction of energy ($<0.1\%$) it'is not taken into account to speed up the computation of the anisoplanatism transfer function.
+
+In case this information is not available but still required, we must deploy another approaches based on LGS/Tip-tilt spatial correlation, temporal LGS cross-covariance or focal-plan techniques. The later will be discussed in another KASP note.
+
+\subsection{Noise covariance}
+
+The knowledge of the WFS noise covariance matrix is mandatory when processing the AO telemetry for PSF reconstruction purpose. Several methods have been explored in this context~(\cite{Flicker2008}), we've decided to estimate this matrix from the temporal cross-correlations $\gamma_{ij}(l,\delta_t)$ of DM commands~:
+\begin{equation}
+\begin{aligned}
+	\gamma_{ij}(l,\delta_t) &= \dfrac{1}{n_\text{f}}\sum_{k=l}^{n_\text{f}} (\boldsymbol{u}_i(k) - \aver{\boldsymbol{u}_i})\times (\boldsymbol{u}_j(k-l-\delta_t) - \aver{\boldsymbol{u}_j}) \\
+	& = \aver{(\boldsymbol{u}_i(k) - \aver{\boldsymbol{u}_i})\times (\boldsymbol{u}_j(k-l-\delta_t) - \aver{\boldsymbol{u}_j})},
+\end{aligned}	
+\end{equation}
+where $\aver{\cdot}$ is the average over the temporal frame and $i,j$ indexes on commands. We estimate element $(i,j)$  of the noise covariance matrix by taking the difference on auto and 1-frame delayed cross-correlation at zero~: 
+\begin{equation}
+\begin{aligned}
+	C_{nn}(i,j) &= \gamma_{ij}(0,0) - \gamma_{ij}(0,1)\\
+	&= \aver{\para{\boldsymbol{u}_i(k) - \aver{\boldsymbol{u}_i}}\times \para{\boldsymbol{u}_{j}(k) - \aver{\boldsymbol{u}_j}}} - \aver{\para{\boldsymbol{u}_i(k) - \aver{\boldsymbol{u}_i}}\times \para{\boldsymbol{u}_{j}(k-1) - \aver{\boldsymbol{u}_j}}}\\
+	&= \para{\boldsymbol{u}_i(k) - \aver{\boldsymbol{u}_i}} \times\aver{\para{\boldsymbol{u}_j(k) - \boldsymbol{u}_{j}(k-1)}}\\
+	&=\aver{\boldsymbol{u}_i(k)\times\para{\boldsymbol{u}_j(k) - \boldsymbol{u}_{j}(k-1)}} - \aver{\boldsymbol{u}_j}\times\aver{\para{\boldsymbol{u}_i(k)- \boldsymbol{u}_{i}(k-1)}}\\
+	&= \aver{\boldsymbol{u}_i(k)\times\para{\boldsymbol{u}_j(k) - \boldsymbol{u}_{j}(k-1)}},
+\end{aligned}
+\end{equation}
+in the assumption we have $\aver{\boldsymbol{u}_{j}(k)} = \aver{\boldsymbol{u}_{j}(k-1)}$ by ergodicity. This calculation assumes, first the noise is temporally decorrelated , second the turbulence statistics are the same a frame to another. This calculation requires to estimate the noise a signal produced by the atmosphere without AO compensation, that is straightforward to derive into the DM actuators space.
+
+ This noise covariance matrix is then directly subtracted to the covariance of residual phase to compensate for the WFS noise when reconstructing the PSF, as introduced by V\'eran~(\cite{Veran1997}). About the second hypothesis, working with high-bandwidth systems allows to consider it quite true. At lower bandwidths or shorter turbulence coherence times, either we derive the noise variance by taking the difference on few more steps~($\delta_t =2,3$) or go for different methods as extrapolating the cross-correlation origin using a polynomial approximation as proposed by Gendron~(\cite{Gendron1995}).
+\section{Conclusions}
+
+
+
+\bibliographystyle{plain} 
+\bibliography{/home/omartin/Documents/Bibliography/biblioLolo}
+
+\end{document}

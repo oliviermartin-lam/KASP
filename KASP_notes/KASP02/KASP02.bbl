@@ -1,0 +1,32 @@
+\begin{thebibliography}{1}
+
+\bibitem{Chassat1989}
+F.~{Chassat}.
+\newblock {Calcul du domaine d'isoplan{\'e}tisme d'un syst{\`e}me d'optique
+  adaptative fonctionnant {\`a} travers la turbulence atmosph{\'e}rique.}
+\newblock {\em Journal of Optics}, 20:13--23, February 1989.
+
+\bibitem{Flicker2008}
+R~{Flicker}.
+\newblock {PSF reconstruction for Keck AO}.
+\newblock Technical report, 2008.
+
+\bibitem{Fusco2000}
+T.~{Fusco}, J.-M. {Conan}, L.~M. {Mugnier}, V.~{Michau}, and G.~{Rousset}.
+\newblock {Characterization of adaptive optics point spread function for
+  anisoplanatic imaging. Application to stellar field deconvolution}.
+\newblock {\em \aap}, 142:149--156, February 2000.
+
+\bibitem{GillesJOSA2008}
+L.~{Gilles} and B.~L. {Ellerbroek}.
+\newblock {Split atmospheric tomography using laser and natural guide stars}.
+\newblock {\em Journal of the Optical Society of America A}, 25:2427, September
+  2008.
+
+\bibitem{Rigaut1998}
+F.~J. {Rigaut}, J.-P. {V\'eran}, and O.~{Lai}.
+\newblock {\em {Analytical model for Shack-Hartmann-based adaptive optics
+  systems}}, volume 3353 of {\em \procspie}, pages 1038--1048.
+\newblock September 1998.
+
+\end{thebibliography}

@@ -1,0 +1,15 @@
+\BOOKMARK [1][-]{section.1}{Purpose}{}% 1
+\BOOKMARK [1][-]{section.2}{PSF reconstruction approaches}{}% 2
+\BOOKMARK [2][-]{subsection.2.1}{Classical approach}{section.2}% 3
+\BOOKMARK [3][-]{subsubsection.2.1.1}{OTF NCPA}{subsection.2.1}% 4
+\BOOKMARK [3][-]{subsubsection.2.1.2}{Anisoplanatism transfer functions}{subsection.2.1}% 5
+\BOOKMARK [3][-]{subsubsection.2.1.3}{OTF fitting}{subsection.2.1}% 6
+\BOOKMARK [3][-]{subsubsection.2.1.4}{OTF aliasing}{subsection.2.1}% 7
+\BOOKMARK [2][-]{subsection.2.2}{DM-based approach}{section.2}% 8
+\BOOKMARK [3][-]{subsubsection.2.2.1}{Parallel covariance}{subsection.2.2}% 9
+\BOOKMARK [3][-]{subsubsection.2.2.2}{Fitting covariance}{subsection.2.2}% 10
+\BOOKMARK [3][-]{subsubsection.2.2.3}{Aliasing}{subsection.2.2}% 11
+\BOOKMARK [1][-]{section.3}{Applications to KECK }{}% 12
+\BOOKMARK [2][-]{subsection.3.1}{PSF-R class}{section.3}% 13
+\BOOKMARK [2][-]{subsection.3.2}{Results}{section.3}% 14
+\BOOKMARK [1][-]{section.4}{Conclusions}{}% 15

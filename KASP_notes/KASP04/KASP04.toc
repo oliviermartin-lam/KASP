@@ -1,0 +1,13 @@
+\contentsline {section}{\numberline {1}Purpose}{1}{section.1}
+\contentsline {section}{\numberline {2}Processing pipeline}{2}{section.2}
+\contentsline {section}{\numberline {3}PSF estimates}{3}{section.3}
+\contentsline {subsection}{\numberline {3.1}the \emph {psfStats} class}{3}{subsection.3.1}
+\contentsline {subsection}{\numberline {3.2}Strehl ratio}{5}{subsection.3.2}
+\contentsline {subsection}{\numberline {3.3}FWHM}{6}{subsection.3.3}
+\contentsline {subsubsection}{\numberline {3.3.1}Moffat fitting}{6}{subsubsection.3.3.1}
+\contentsline {subsubsection}{\numberline {3.3.2}Gaussian fitting}{6}{subsubsection.3.3.2}
+\contentsline {subsection}{\numberline {3.4}Ensquared energy}{7}{subsection.3.4}
+\contentsline {section}{\numberline {4}Towards astrophysics metrics}{7}{section.4}
+\contentsline {subsection}{\numberline {4.1}Relative photometric error}{7}{subsection.4.1}
+\contentsline {subsection}{\numberline {4.2}Relative astrometric error}{7}{subsection.4.2}
+\contentsline {section}{\numberline {5}Conclusions}{8}{section.5}

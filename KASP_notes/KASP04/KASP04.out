@@ -1,0 +1,13 @@
+\BOOKMARK [1][-]{section.1}{Purpose}{}% 1
+\BOOKMARK [1][-]{section.2}{Processing pipeline}{}% 2
+\BOOKMARK [1][-]{section.3}{PSF estimates}{}% 3
+\BOOKMARK [2][-]{subsection.3.1}{the psfStats class}{section.3}% 4
+\BOOKMARK [2][-]{subsection.3.2}{Strehl ratio}{section.3}% 5
+\BOOKMARK [2][-]{subsection.3.3}{FWHM}{section.3}% 6
+\BOOKMARK [3][-]{subsubsection.3.3.1}{Moffat fitting}{subsection.3.3}% 7
+\BOOKMARK [3][-]{subsubsection.3.3.2}{Gaussian fitting}{subsection.3.3}% 8
+\BOOKMARK [2][-]{subsection.3.4}{Ensquared energy}{section.3}% 9
+\BOOKMARK [1][-]{section.4}{Towards astrophysics metrics}{}% 10
+\BOOKMARK [2][-]{subsection.4.1}{Relative photometric error}{section.4}% 11
+\BOOKMARK [2][-]{subsection.4.2}{Relative astrometric error}{section.4}% 12
+\BOOKMARK [1][-]{section.5}{Conclusions}{}% 13

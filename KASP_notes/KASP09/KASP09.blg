@@ -1,0 +1,46 @@
+This is BibTeX, Version 0.99d (TeX Live 2014)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: KASP09.aux
+The style file: plain.bst
+Database file #1: /home/omartin/Documents/Bibliography/biblioLolo.bib
+You've used 1 entry,
+            2118 wiz_defined-function locations,
+            506 strings with 4303 characters,
+and the built_in function-call counts, 576 in all, are:
+= -- 51
+> -- 33
+< -- 2
++ -- 13
+- -- 12
+* -- 44
+:= -- 88
+add.period$ -- 3
+call.type$ -- 1
+change.case$ -- 9
+chr.to.int$ -- 0
+cite$ -- 1
+duplicate$ -- 28
+empty$ -- 37
+format.name$ -- 12
+if$ -- 125
+int.to.chr$ -- 0
+int.to.str$ -- 1
+missing$ -- 1
+newline$ -- 8
+num.names$ -- 2
+pop$ -- 12
+preamble$ -- 1
+purify$ -- 8
+quote$ -- 0
+skip$ -- 25
+stack$ -- 0
+substring$ -- 17
+swap$ -- 17
+text.length$ -- 2
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 4
+warning$ -- 0
+while$ -- 3
+width$ -- 2
+write$ -- 14

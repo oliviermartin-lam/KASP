@@ -1,0 +1,345 @@
+\documentclass[12pt]{article}
+
+%\renewcommand{\baselinestretch}{1.65}
+\usepackage{amsmath,graphicx,bbm,amssymb}
+\usepackage{txfonts}
+\usepackage{array}
+\usepackage{subfigure}
+\usepackage{ccaption}
+\usepackage{color}
+\usepackage{tikz}
+\usetikzlibrary{arrows} 
+\usetikzlibrary{shapes.multipart}
+\usetikzlibrary{shapes.misc, positioning}
+\usepackage{float}
+\usepackage{calc}
+\usepackage{multirow}
+\usepackage{fancyhdr}
+\usepackage{colortbl}
+\usepackage[hmargin=1.5cm, top=2cm, bottom=2cm]{geometry}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\newcommand{\procspie}{Proc. SPIE } 
+\newcommand{\pasp}{Publications of the Astronomical Society of the Pacific } 
+\newcommand{\aap}{Astron. \& Astrophys. } 
+\newcommand{\mnras}{M.N.R.A.S } 
+
+\newcommand{\module}[1]{\left\vert #1 \right\vert}
+\newcommand{\norme}[1]{\left\vert\left\vert #1 \right\vert\right\vert}
+\newcommand{\para}[1]{\left(#1\right)}
+\newcommand{\cro}[1]{\left[#1\right]}
+\newcommand{\aver}[1]{\left\langle #1 \right\rangle}
+\newcommand{\bra}[1]{\left\lbrace #1 \right\rbrace}
+\newcommand{\xth}[1]{#1^{\text{th}}}
+\newcommand{\otfdl}{\text{OTF}_\text{DL}}
+
+\newcommand{\rz}{r_0}
+\newcommand{\lz}{L_0}
+\newcommand{\cnh}{C_n^2(h)}
+\newcommand{\nwfs}{\text{n}_\text{wfs}}
+\newcommand{\R}{\boldsymbol{\text{R}}}
+\newcommand{\Mc}{\boldsymbol{\text{M}_c}}
+\newcommand{\thSrc}{\boldsymbol{\theta}_\text{src}}
+\newcommand{\thGs}{\boldsymbol{\theta}_\text{gs}}
+\newcommand{\thNgs}{\boldsymbol{\theta}_\text{ngs}}
+\newcommand{\thLgs}{\boldsymbol{\theta}_\text{lgs}}
+\newcommand{\rbb}{\boldsymbol{r}}
+\newcommand{\rbun}{\boldsymbol{r}_1}
+\newcommand{\rbdeux}{\boldsymbol{r}_2}
+\newcommand{\rhob}{\boldsymbol{\rho}}
+\newcommand{\TTout}{\boldsymbol{\text{TT}}_\text{out}}
+\newcommand{\TTonly}{\boldsymbol{\text{TT}}_\text{only}}
+
+\title{KASP Technical notes \#04:\\ KECK NIRC2 images processing with KASP}
+\author{O. Beltramo-Martin\footnote{olivier.martin@lam.fr}, C.~M. Correia}
+\date{}
+% Option to view page numbers
+%\pagestyle{plain} % change to \pagestyle{plain} for page numbers   
+\setcounter{page}{1}
+\fancyhead[LO,LE]{KASP Technical notes \#04}
+\fancyhead[RE,RO]{O. Beltramo-Martin}
+\pagestyle{fancy} 
+\setlength{\parindent}{0cm}
+
+\begin{document}
+
+\maketitle
+
+\rule{\columnwidth}{0.1mm}
+\tableofcontents
+\rule{\columnwidth}{0.1mm}
+\section{Purpose}
+This KASP note dedicates to NIRC2 images processing in the purpose to be compared to reconstructed PSF coming from the AO telemetry. We focus on the different steps of cleaning NIRC2 images and how PSF characteristics, especially Strehl ratio and FWHM, are estimated.\\
+
+In the goal of producing a better understanding of the PSF reconstruction gain and limitations, we also focus on astrophysics metrics, as the relative photometric and astrometric error. We aim at determining what is the real impact of reconstruction residual onto the science behind and providing clear messages to the community. We detail how they're derived and illustrate how to use the existing routine delivering these estimations.
+
+\section{Processing pipeline}
+
+We start from a raw image \emph{rawImg} that feeds a cleaning procedure split into the following steps~:
+\begin{itemize}
+	\item[$\bullet$] \textbf{Unbias from background and flat}\\
+	 \emph{Input~: rawImg~(image), bg~(image) and flat~(image) - Output~: Clean image}\\ The calibrated background is subtracted to the raw image and then compensated from the flat variation across pixels. We get the following operation~:
+	  \begin{equation}
+		img = \dfrac{rawImg - bg}{flat}
+	  \end{equation}
+	 
+	\item[$\bullet$] \textbf{Bad pixels management}\\
+	\emph{Input~: rawImg~(image), badPixelMap~(image) - Output~: Clean image}\\
+	 We are provided by a calibrated bad pixel map~(logical values, 1 for bad pixel, 0 either) that is passed to a routine~(psfrTools.corrDeadPixFrame) designed to identify valid neighbors pixels to each bad one. The bad pixel value is then extrapolated to~:
+	 \begin{equation}	 
+	 \text{PSF}(i,j) =  \sum_{k=-1}^{1}\sum_{l=-1}^{1}  v_{kl}\times w_{kl}\times \text{PSF}(i+k,j+l),	 	
+	 \end{equation}
+	 with
+	  \begin{equation}
+	  	w_{kl} = \left\lbrace  
+	  	\begin{aligned}		  	
+		  	& 2\quad \text{if}\quad \module{k} + \module{l} =1\\
+		  	& 1\quad \text{if}\quad \module{k} + \module{l} =2\\
+		  	& 0\quad \text{else}\\
+	  	\end{aligned}
+	  	\right.,
+	  \end{equation}
+	and $v_{kl}$ set to (i) either 0 if the pixel shifted by $(k,l)$ displacement is identified as a bad pixel as well (ii)or one if the pixel is not identified as a bad one. To ensure a proper extrapolation, we may verify we have enough good pixels surrounding the bad one~: we set an arbitrary threshold $\sum_{k=-1}^{1}\sum_{l=-1}^{1}  v_{kl}\times w_{kl} = 4$. It is reached when the four diagonal neighbors are valid or two edges ones for instance. If this criteria is not verified, the bad pixel is still considered as bad until the end of the procedure. At this stage, if some bad pixels remain, the badPixelMap is duplicated and set to zero at previous bad pixel position that have been corrected during the first passage through the procedure. The corrected image is getting through the routine recursively until there's no more bad pixel.
+	
+	\item[$\bullet$] \textbf{Glitchs filtering}\\
+	\emph{Input~: rawImg~(image) - Output~: clean image}\\
+	Perform a median filter on the image for removing hot pixels still contented into the image.
+	
+	\item[$\bullet$] \textbf{Setting the field of view}\\
+	\emph{Input~: rawImg~(image), N~(\#pixels) - Output~: Cropped image}\\
+	 The PSF is cropped to reach a support size the input N. This step requires to determine the PSF position to keep the PSF at the center location before cropping, which is performed by retrieving the maximum value in the image. The maximum of the image is set at the middle pixel.
+	 
+	\item[$\bullet$] \textbf{PSF recentering}\\
+	 \emph{Input~: oversampling~(scalar) - Output~: PSF recentered}.\\
+	  The PSF is oversampled to a high resolution by zero-padding the OTF on oversampling$\times$ the initial support size. The peak position is then determined on this PSF and set up to the image center. We then get back to the initial resolution by cropping the OTF. if oversampling values zero, no centering is performed.
+	  
+	\item[$\bullet$] \textbf{Filtering high angular frequencies}\\
+	\emph{Input~: OTF - Output~: filtered OTF}.\\
+	We filter high angular frequencies higher than the telescope cut-off frequency $D/\lambda$~:
+	\begin{equation}
+		\text{OTF}\para{\dfrac{\module{\boldsymbol{u}}}{\lambda} > D/\lambda} = 0.
+	\end{equation}
+	The frequency content maybe be not equal to zero because numerical artifact when computing the OTF from the PSF. Physically talking, these frequencies does not exist because the telescope pupil filtering and must be removed is they exist before getting back to the PSF domain.
+	
+	\item[$\bullet$] \textbf{CCD pixel response compensation}\\
+	\emph{Input~: rawOTF - Output~: filtered OTF}.\\
+	PSF reconstruction algorithm is producing a PSF free from any pixel response. To enhance contrast on the NIRC2 PSF and compared the real structure to the reconstructed PSF, we must unbias the OTF from the CCD pixel response as follows~:	
+	\begin{equation} \label{E:CCD}
+		\text{OTF}(\boldsymbol{u}/\lambda) = \dfrac{\text{rawOTF}(\boldsymbol{u}/\lambda)}{|\text{sinc}(u_x/\lambda/2)|\times |\text{sinc}(u_y/\lambda/2)|},
+	\end{equation}
+	with $\text{sinc}(x) = \sin(x)/x$. In the case of NIRC2 images, the PSF is well sampled~(1.5 pixels in the diffraction in H-band) and the operation made in Eq.~\ref{E:CCD} does not require to take particularly care about any division by zero.
+	
+	\item[$\bullet$] \textbf{Denoising}\\
+	\emph{Input~: OTF, nfit~(scalar) - Output~: filtered OTF}.\\
+	This step is not used anymore because not so trusted in terms of efficiency. The point here was to model fit the nfit first values of the OTF, except the peak, by a polynomial function of order nfit. This step provides what the zero value of the OTF should be a when comparing to the real value we get an estimation of the noise level. The OTF peak is forced to the fitted value retrieved by the procedure.
+	
+	\item[$\bullet$] \textbf{Thresholding}\\
+	\emph{Input~: rawImg~(image) - Output~: Clean image}\\
+	 Instead of using the previous routine to take care of the noise, we directly subtract the median value on all pixels. We set to zero all pixels with negative values.
+\end{itemize}
+
+
+\section{PSF estimates}
+\subsection{the \emph{psfStats} class}
+This class is the output of the \emph{psfR} class that performs the reconstruction from the \emph{system} class. The goal of the \emph{psfStats} is to gather all information about the PSF into a single facility when providing the image coming from a simulation of a real on-sky acquisition.\\
+
+Calling this class allows automatically to run several routines for determining PSF characteristics as Strehl ratio, FWHM, ellipticity and ensquared energy. The user can also provide a reference PSF~(psfRef) that allows to estimate relative photo-astrometry errors accuracy caused by difference between the PSF passed to psfStats and this reference. Note that these quantities are not absolute values; they only traduce difference onto PSF in terms of understandable metrics.
+Tab.~\ref{T:psfStats} summarizes the psfStats properties and their meaning.
+
+\begin{table}[h!] \label{T:psfStats}
+	\centering
+	\begin{tabular}{lp{15cm}}
+		\hline 
+		\multicolumn{2}{c}{Dependent classes} \\
+			\hline
+	\textbf{src} & Class \emph{source} including imaged source properties.\\
+	\textbf{tel}& Class \emph{telescope} including telescope properties.\\	
+		\hline
+		 \multicolumn{2}{c}{Image properties} \\
+		 	\hline
+	\textbf{image}& Matrix containing the image.\\	
+	psfResolution& Number of pixels defining the image support size. \\
+	\textbf{pixelScaleInMas}& Pixel scale in mas. \\
+	nyquistSampling& Image sampling, value 1 for a pixel scale set to $\lambda/2/D$\\
+	psfFieldOfView& Image field of view in mas and owes psfResolution$\times$pixelScaleInMas. \\
+	focalGrid& Definition of angular separation grid from psfResolution and pixelScaleInMas. \\
+	\hline
+	 \multicolumn{2}{c}{PSF characteristics} \\
+	\hline
+	\emph{Strehl}& Strehl ratio value.\\
+	StrehlAccuracy& Accuracy on the Strehl ratio estimation if not provided.\\
+	FWHM& Full width at half maximum. Set up by the Moffat or Gaussian fitting if called.\\
+	FWHMAccuracy& Accuracy on the FWHM when fitting the PSF.\\
+	FluxInFWHM& Percentage of PSF energy contained in the FWHM.\\
+	Ellipticity& Ratio between largest and smallest FWHM.\\
+	EnsquaredEnergy& Ensquared energy as function of separation for multiple of $\lambda/D$.\\                
+	\hline
+	 \multicolumn{2}{c}{Photo-astrometry characteristics} \\
+	\hline
+	\textbf{exposureTime}& Camera exposure time.\\
+	bg& Median value of the background.\\
+	ron& Estimated read-out noise standard-deviation on the image. \\
+	flux& Estimated flux in the image in counts units.\\
+	nPhoton& Defined by Flux/tel.area/exposureTime.\\
+	magnitude& Defined by -2.5log10(nPhoton/src.zeroPoint)\\
+	\emph{psfRef}& Reference PSF for measuring photo-astrometric accuracy.\\
+	magAccuracy& Relative magnitude error when comparing image to psfRef\\
+	xSrc& x location of the PSF in image\\
+	ySrc& y location of the PSF in image\\
+	astroAccuracy& Relative astrometric error when comparing image to psfRef\\
+	\hline
+	\multicolumn{2}{c}{Moffat fitting} \\
+	\hline
+	\emph{flagMoffat}& Set to 1 for fitting the PSF by a Moffat function.\\
+	MoffatImage& Fitted Moffat image onto image.\\
+	MoffatResidual& Fitting residual.\\
+	MoffatParam& Retrieved Moffat parameters.\\
+	MoffatStd& Standard-deviation on MoffatParam values.\\	
+	\hline
+	\multicolumn{2}{c}{Gaussian fitting} \\
+	\hline
+	\emph{flagGaussian}& Set to 1 for fitting the PSF by a Gaussian function. \\
+	GaussianImage& Fitted Gaussian image onto image.\\
+	GaussianResidual& Fitting residual.\\
+	GaussianParam& Retrieved Gaussian parameters.\\
+	GaussianStd& Standard-deviation on GaussianParam values.\\	
+	\end{tabular}
+\caption{Summary of \emph{psfStats} class properties. Bold input are required parameters, while italic ones can be provided.}
+\end{table}
+
+
+\subsection{Strehl ratio}
+Strehl ratio is commonly defined as the PSF maximum intensity referred to the diffraction limit case. It can be defined by the energy contained into the angular frequencies that leads naturally to the following definition~:
+\begin{equation}\label{E:SR}
+	\widehat{\text{SR}} = \dfrac{\iint_{-D/\lambda}^{D/\lambda} \text{OTF}(\boldsymbol{u}/\lambda),d\boldsymbol{u}/\lambda}{\iint_{-D/\lambda}^{D/\lambda} \otfdl(\boldsymbol{u}/\lambda),d\boldsymbol{u}/\lambda},
+\end{equation}
+where $\text{OTF}$ is the Optical transfer function derived from the PSF and $\otfdl$ the diffraction limit OTF. The first one is computed from the Fourier transform of the PSF while the second one is derived from the telescope pupil auto-correlation~:
+\begin{equation}
+	\begin{aligned}
+	\text{OTF}(\boldsymbol{u}/\lambda)=&  \iint\text{PSF}(\boldsymbol{\alpha})\exp(-2i\pi\boldsymbol{\alpha}\boldsymbol{u}/\lambda)d\boldsymbol{\alpha} \\ 
+	 \otfdl(\boldsymbol{u}/\lambda) =& \iint \mathcal{P}(\rbb)\mathcal{P}^*(\rbb + \boldsymbol{u})d\rbb.\\
+	\end{aligned}
+\end{equation}
+Practically, term OTF is sampled from $-D/\lambda$ to $D/\lambda$ by a step imposed by \emph{psfResolution} when computing from the Matlab \emph{fft2} routine. The diffraction limit $\otfdl$ is derived by the zero-padded telescope pupil to a factor \emph{nyquistSampling} to ensure the same resolution and then interpolate to \emph{psfResolution} to get the same field of view.\\
+
+From Eq.~\ref{E:SR}, Strehl ratio value is also estimated by~:
+\begin{equation}
+	\begin{aligned}
+		\widehat{\text{SR}} &= \dfrac{\text{PSF}(0,0)}{\text{flux}} \times  \dfrac{\text{flux}_\text{DL}}{\text{PSF}_\text{DL}(0,0)},\\
+		& = c_\text{DL}\times\dfrac{\text{PSF}(0,0)}{\text{flux}}
+	\end{aligned}
+\end{equation}
+where flux is the PSF flux and $c_\text{DL}$ a constant value depending on the diffraction-limit PSF defined by~(\cite{Gendron1995}):
+\begin{equation}
+	c_\text{DL} = \dfrac{\pi^2\times(D^2 - o^2)\times ps^2}{4\lambda^2},
+\end{equation}
+with $D$ the telescope diameter, $o$ the central obstruction ratio, $ps$ the camera pixel scale and $\lambda$ the imaging wavelength. In the case of perfect determination of $c_\text{DL}$, the accuracy on the Strehl ratio turns to be~:
+\begin{equation}
+		\dfrac{\Delta  \text{SR}}{\text{SR}}  = \dfrac{\Delta \text{PSF}(0,0)}{\text{PSF}(0,0)}  + \dfrac{\Delta \text{flux}}{\text{flux}}.		
+\end{equation}
+
+Because the additive read-out noise $\eta$ reaching a standard-deviation value $\text{ron}$, the estimation of the maximum value of the PSF suffers by the same standard-deviation, while the estimation of the flux propagate a factor $N$, the number of pixels the flux estimation is based on. We end up to have the following accuracy on the Strehl ratio~:
+\begin{equation}
+\dfrac{\Delta  \text{SR}}{\text{SR}}  = \dfrac{\text{ron}}{\text{PSF}(0,0)} + \dfrac{ N\times \text{ron}}{\text{flux}}.
+\end{equation}
+Note the previous formula does not take into account any photo noise and assume the pupil is perfectly known.
+
+\subsection{FWHM}
+\subsubsection{Moffat fitting}
+Class \emph{psfStats} offers the possibility to fit onto the PSF a Moffat function defined by~:
+\begin{equation}
+	\mathcal{M}(\alpha_x,\alpha_y) = I_0\times\para{1 + \para{\dfrac{(\alpha_x-dx)\cos(\theta) + (\alpha_y-dy)\sin(\theta)}{l_x}}^2 + \para{\dfrac{(\alpha_y-dy)\cos(\theta) - (\alpha_x-dx)\sin(\theta)}{l_y}}^2}^{-\beta},
+\end{equation}
+where~:
+\begin{itemize}
+	\item[$\bullet$] $I_0$ is the amplitude,
+	\item[$\bullet$] $l_x,l_y$ is the spread factors in the two directions,
+	\item[$\bullet$] $d_x,d_y$ is the center position,
+	\item[$\bullet$] $\theta$ is the rotation angle,
+	\item[$\bullet$] $\beta$ is slopes factor.
+\end{itemize}
+
+A internal routine in \emph{psfStats} is called for least-squared minimizing the cost function~:
+\begin{equation}
+	\varepsilon^2\para{\cro{I_0,l_x,l_y,d_y,d_y,\theta,\beta}} = \norme{\text{PSF}\para{\alpha_x,\alpha_y} - \mathcal{M}\para{\alpha_x,\alpha_y,\cro{I_0,l_x,l_y,d_y,d_y,\theta,\beta}}}^2,
+\end{equation}
+producing a set of estimated Moffat parameters. FWHM in x and y directions is derived then by~:
+\begin{equation}
+	\begin{aligned}
+			\widehat{\text{FWHM}}_x &= 2\times \widehat{l}_x\times\sqrt{2^{1/\widehat{\beta}}-1}\\
+			\widehat{\text{FWHM}}_y &= 2\times \widehat{l}_y\times\sqrt{2^{1/\widehat{\beta}}-1}.
+	\end{aligned}
+\end{equation}
+
+The minimization is ensured by the Matlab routine \emph{nlinfit} that allows to retrieve the standard-deviation on the estimates when calling the \emph{nlparci} function. The \emph{psfStats} FWHM field is then updated by taking the maximum value of FWHM and the ellipticity is defined as the ratio max value on min value.
+
+\subsubsection{Gaussian fitting}
+The follow exact same step as done with the Moffat fitting, except on the model function that is now defined as~:
+\begin{equation}
+\mathcal{G}(\alpha_x,\alpha_y) = I_0\times\exp\para{-0.5\times\para{\dfrac{(\alpha_x-dx)\cos(\theta) + (\alpha_y-dy)\sin(\theta)}{l_x}}^2 + \para{\dfrac{(\alpha_y-dy)\cos(\theta) - (\alpha_x-dx)\sin(\theta)}{l_y}}^2},
+\end{equation}
+where the inputs parameters are describing the same physical properties. FWHM values are estimated by~:
+\begin{equation}
+\begin{aligned}
+\widehat{\text{FWHM}}_x &= 2\times \widehat{l}_x\times\sqrt{2\log(2)}\\
+\widehat{\text{FWHM}}_y &= 2\times \widehat{l}_y\times\sqrt{2\log(2)}.
+\end{aligned}
+\end{equation}
+	
+\subsection{Ensquared energy}
+Ensquared energy measures the ratio of PSF energy in an angular box size $\alpha$ to the total energy contained into the PSF. In the angular frequencies domain, this step resumes to multiply the OTF by the Fourier transform of a gate function, i.e a cardinal sinus~:
+\begin{equation}
+	\textbf{EE}(\alpha) = \para{\dfrac{\alpha}{D}}^2\iint_{-D\lambda}^{D\lambda} \text{OTF}(u_x/\lambda,u_y/\lambda)\times \text{sinc}(\pi\alpha u_x)\times \text{sinc}(\pi \alpha u_y) du_x du_y.
+\end{equation}
+Practically the integral is derived using the \emph{trapz} method from Matlab.
+\section{Towards astrophysics metrics}
+
+PSF characteristics may fail in producing a real understandable scalar value in the purpose of evaluating PSF reconstruction efficiency. The ultimate goal of PSF reconstruction stands on a science need~: knowledge of the PSF is mandatory to retrieve accurately photometry, astrometry or even morphology of observed targets. We aint at exploring relative photo-astrometric accuracy limited by the PSF shape mis-reconstruction. These quantities does not take into account absolute limitations as the CCD counts/magnitude relation calibration or the catalogs stars position accuracy.
+
+\subsection{Relative photometric error}
+
+We start scaling the reconstructed PSF to minimize the difference with the reference PSF, that could be a real on-sky image PSF for instance~:
+\begin{equation}
+	\varepsilon^2\para{a} = \norme{\text{PSF}_\text{ref}\para{\boldsymbol{\alpha}} - a\times\text{PSF}\para{\boldsymbol{\alpha}}}^2,
+\end{equation}
+leading to estimate the scale factor as~:
+\begin{equation}
+\widehat{a} = \underset{a}{\text{argmin}} \: \varepsilon^2\para{a}.
+\end{equation}
+
+The minimization is ensured by the Matlab least-square procedure \emph{nlinfit}. We then define the relative photometric error in magnitude units as~:
+\begin{equation}
+	\Delta \text{mag} = -2.5\times\log_\text{10}\para{\dfrac{\widehat{a}\times\iint\text{PSF}\para{\boldsymbol{\alpha}}d\boldsymbol{\alpha}}{\iint\text{PSF}_\text{ref}\para{\boldsymbol{\alpha}}d\boldsymbol{\alpha}}}.
+\end{equation}
+In the case of a perfect reconstruction, we get $\widehat{a} = 1$ and a photometric error valuing zero. 
+
+\subsection{Relative astrometric error}
+
+The PSF shape mis-reconstruction will cause a misleading on the PSF location. To traduce shape disparity onto astrometry, we start defining a binary star as~:
+\begin{equation}
+\text{Binary}\para{\boldsymbol{\alpha},\text{PSF},\boldsymbol{l}} = \text{PSF}\para{\boldsymbol{\alpha}} + \text{PSF}\para{\boldsymbol{\alpha}+\boldsymbol{l}},
+\end{equation}
+that superimposes the input PSF by shifting one by the $\boldsymbol{l}$ vector in keeping the first one exactly on-axis. Practically, the binary model is the covolution of a two points source with the input PSF, the separation is allowed to reach sub-pixel levels.
+
+To measure the astrometric error, we define a model of binary using the reference PSF and a given separation $\boldsymbol{l}_\text{ref}$, then play the game of fitting the separation of another binary derived from the reconstructed PSF by minimizing~:
+\begin{equation}
+\varepsilon^2\para{\boldsymbol{l}_\text{ref},\boldsymbol{l}} = \norme{\text{Binary}\para{\boldsymbol{\alpha},\text{PSF}_\text{ref},\boldsymbol{l}_\text{ref}} - \text{Binary}\para{\boldsymbol{\alpha},\text{PSF},\boldsymbol{l}}}^2.
+\end{equation}
+The least-squared procedure leads to retrieve the reference binary separation from~:
+\begin{equation}
+\widehat{\boldsymbol{l}} = \underset{\boldsymbol{l}}{\text{argmin}} \: \varepsilon^2\para{\boldsymbol{l}_\text{ref},\boldsymbol{l}}.
+\end{equation}
+Finally, we define the relative astrometric accuracy as~:
+\begin{equation}
+	\Delta \text{astro} = {\widehat{\boldsymbol{l}} - \boldsymbol{l}_\text{ref}}.
+\end{equation}
+In the future, we'll perform the identification of this term in introducing extra noise on the reference PSF for drawing plots of accuracy as function of the PSF signal to noise ratio.
+
+\section{Conclusions}
+
+We've detailed the pipeline for processing KECK NIRC2 images implemented into KASP and presented the \emph{psfStats} class that gathers the PSF and all of its characteristics. We especially how we define the main scalar parameters and introduced two astrophysics metrics, the relative photometry and astrometry accuracy.
+
+
+\bibliographystyle{plain} 
+\bibliography{/home/omartin/Documents/Bibliography/biblioLolo}
+
+\end{document}

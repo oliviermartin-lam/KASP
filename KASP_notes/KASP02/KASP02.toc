@@ -1,0 +1,12 @@
+\contentsline {section}{\numberline {1}Purpose}{1}{section.1}
+\contentsline {section}{\numberline {2}Filters implementation}{2}{section.2}
+\contentsline {subsection}{\numberline {2.1}Simulation framework}{2}{subsection.2.1}
+\contentsline {subsection}{\numberline {2.2}Zonal approaches}{3}{subsection.2.2}
+\contentsline {subsubsection}{\numberline {2.2.1}Zonal covariance derivation}{3}{subsubsection.2.2.1}
+\contentsline {subsubsection}{\numberline {2.2.2}Flicker's approach}{3}{subsubsection.2.2.2}
+\contentsline {subsection}{\numberline {2.3}Modal approaches}{4}{subsection.2.3}
+\contentsline {subsubsection}{\numberline {2.3.1}Zernike decomposition}{4}{subsubsection.2.3.1}
+\contentsline {subsubsection}{\numberline {2.3.2}PSD-based approach}{4}{subsubsection.2.3.2}
+\contentsline {section}{\numberline {3}Results}{5}{section.3}
+\contentsline {section}{\numberline {4}Split modal control}{6}{section.4}
+\contentsline {section}{\numberline {5}Conclusions}{7}{section.5}
