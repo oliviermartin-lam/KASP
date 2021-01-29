@@ -521,6 +521,7 @@ classdef aoSystem < handle
             npix   = obj.cam.resolution(1);
             ps     = obj.cam.pixelScale*constants.radian2mas;
             tExp   = obj.cam.exposureTime*obj.tel.samplingTime;
+            tmp    = kaspPSFStats.empty(0,numel(obj.sci));
             for iSrc=1:numel(obj.sci)
                 xi      = 1 + (iSrc-1)*npix;
                 xf      = iSrc*npix;

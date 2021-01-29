@@ -63,8 +63,8 @@ parm.wfs.minLightRatio          = 0.5;                          % [0-1] partial 
 parm.wfs.exposureTime           = 1e-3;                         % WFS exposure time
 parm.wfs.frameRate              = 1;                            % slaved to tel.samplingTime
 parm.wfs.ron                    = 0;                            % ron in e-
-parm.wfs.photonNoise            = false;                         % true/false statement
-parm.wfs.pixelThreshold         = 0.5;                          % Pixel threshold in the cog algorithm
+parm.wfs.photonNoise            = false;                        % true/false statement
+parm.wfs.pixelThreshold         = parm.wfs.ron/2;               % Pixel threshold in the cog algorithm
 parm.wfs.throughput             = .6;                           % [0-1] throughput ratio 
 
 %% DEFORMABLE MIRROR
@@ -77,8 +77,8 @@ parm.dm.influenceType           = 'gaussian';                   % type of influe
 parm.cam.pixelScale             = 9.94;                         % Pixel scale in mas                         
 parm.cam.resolution             = 200;                          % camera resolution                               
 parm.cam.clockRate              = 1;                            % clock-rate (default 1)                   
-parm.cam.exposureTime           = 500;                         % exposure time in time-steps x clockRate                   
-parm.cam.startDelay             = 50;                           % transient period for loop to converge in time-steps x clockRate                   
+parm.cam.exposureTime           = 100;                         % exposure time in time-steps x clockRate                   
+parm.cam.startDelay             = 10;                           % transient period for loop to converge in time-steps x clockRate                   
 parm.cam.ron                    = 0;                            % ron in e-                  
 parm.cam.photonNoise            = false;                        % true/false photon noise   
 
