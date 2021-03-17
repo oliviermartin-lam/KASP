@@ -337,7 +337,7 @@ classdef aoSystem < handle
                 Rtru = obj.truth2dm.M;
             end
             
-            
+            flush(obj.cam)
             %4/ run the loop
             
             for kIter = 1:nIter          
@@ -504,7 +504,7 @@ classdef aoSystem < handle
             obj.loopData.dmcom  = dmCom(:,:,obj.loopStatus.startDelay+1:end);
             if ~isempty(obj.lowfs)
                 obj.loopData.tiptilt = ttSl(:,:,obj.loopStatus.startDelay+1:end);
-                obj.loopData.tiltCom = ttCom(:,:,obj.loopStatus.startDelay+1:end);
+                obj.loopData.tiltCom = ttCom(:,obj.loopStatus.startDelay+1:end);
             else
                 obj.loopData.tiptilt = obj.matrices.slopes2Tilt*squeeze(obj.loopData.slopes);
                 obj.loopData.tiltCom = obj.matrices.commands2Tilt*squeeze(obj.loopData.dmcom);
@@ -570,10 +570,10 @@ classdef aoSystem < handle
             wvl_min= min(wvl);           
             r0_min = parms.atm.r0*(wvl_min/parms.atm.photometry.wavelength)^(6/5);
             sampR0 = parms.tel.resolution*r0_min/D;            
-            if sampR0 < 2
-                parms.tel.resolution = round(3*D/r0_min);
-                fprintf("Resizing the pupil resolution with %d pixels to sample the r0 with 3 pixels at %.3d nm \n",parms.tel.resolution,wvl_min*1e9);
-            end
+%             if sampR0 < 2
+%                 parms.tel.resolution = round(3*D/r0_min);
+%                 fprintf("Resizing the pupil resolution with %d pixels to sample the r0 with 3 pixels at %.3d nm \n",parms.tel.resolution,wvl_min*1e9);
+%             end
             
             %% 2\ WFS undersampling
             if isfield(parms,'lGs') && ~isempty(parms.lGs.x)
@@ -729,7 +729,7 @@ classdef aoSystem < handle
                 disp('User-defined pupil');
                 disp('----------------------------------------------------');
             elseif exist('pupilClassMatrix','var')
-                tel.pupil = pupilClassMatrix;
+                tel.pupil = abs(pupilClassMatrix);
                 disp('___ PUPIL___');
                 disp('Set telescope pupil from pupil Class');
                 disp('----------------------------------------------------');
@@ -742,7 +742,7 @@ classdef aoSystem < handle
         
         function atm = initAtmosphere(parms)
             
-            airmass = 1/parms.zenithAngle;
+            airmass = 1/cos(parms.zenithAngle); % zenithAngleInRad
             atm = atmosphere(parms.photometry,parms.r0*airmass^(-3/5),mean(parms.L0),'layeredL0',parms.L0,...
                 'fractionnalR0',parms.fractionalR0,'altitude',parms.altitude*airmass,...
                 'windSpeed',parms.windSpeed,'windDirection',parms.windDirection);
