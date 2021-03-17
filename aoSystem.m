@@ -503,8 +503,8 @@ classdef aoSystem < handle
             obj.loopData.slopes = wfsSl(:,:,obj.loopStatus.startDelay+1:end);
             obj.loopData.dmcom  = dmCom(:,:,obj.loopStatus.startDelay+1:end);
             if ~isempty(obj.lowfs)
-                obj.loopData.tiptilt = ttSl(:,:,obj.loopStatus.startDelay+1:end);
-                obj.loopData.tiltCom = ttCom(:,:,obj.loopStatus.startDelay+1:end);
+                obj.loopData.tiptilt = Rtt*ttSl(:,:,obj.loopStatus.startDelay+1:end);
+                obj.loopData.tiltCom = ttCom(:,obj.loopStatus.startDelay+1:end);
             else
                 obj.loopData.tiptilt = obj.matrices.slopes2Tilt*squeeze(obj.loopData.slopes);
                 obj.loopData.tiltCom = obj.matrices.commands2Tilt*squeeze(obj.loopData.dmcom);
