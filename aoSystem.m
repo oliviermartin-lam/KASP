@@ -31,6 +31,7 @@ classdef aoSystem < handle
         % --------------------------- FLAGs -----------------------------%
         flagCalibration = false;
         flagSimulation  = false;
+        path_save       = false;
     end
     
     
@@ -44,10 +45,12 @@ classdef aoSystem < handle
             inputs = inputParser;
             inputs.addRequired('parms', @isstruct);            
             inputs.addParameter('runSimulation', false,@islogical);
+            inputs.addParameter('path_save',[],@ischar);
             inputs.parse(parms,varargin{:});
             
             obj.parms = parms;
             flagSimu  = inputs.Results.runSimulation;
+            obj.path_save = inputs.Results.path_save;
             
             % 1/ Check inputs            
             parms = obj.checkParms(parms);
@@ -498,7 +501,8 @@ classdef aoSystem < handle
             %% ------------------------------------------------------ %
             close(hwait);  
             
-            %5\ Save telemetry            
+            %5\ Save telemetry    
+            
             %5.1\ Get the control loop data
             obj.loopData.slopes = wfsSl(:,:,obj.loopStatus.startDelay+1:end);
             obj.loopData.dmcom  = dmCom(:,:,obj.loopStatus.startDelay+1:end);
@@ -535,8 +539,169 @@ classdef aoSystem < handle
             obj.psf = tmp;
             
             obj.flagSimulation = true;
+            
+            
+            % write the .mat file
+            if obj.path_save
+                saveData(obj)
+            end
+            
         end
-                                       
+          
+        
+        function saveData(obj)
+            
+            data_struct = [];
+            
+            % date
+            c = clock();
+            data_struct.simu_date   = [num2str(c(1)),'_',num2str(c(2)),'_',num2str(c(3))];
+            data_struct.simu_time   = [num2str(c(4)),'_',num2str(c(5)),'_',num2str(c(6))];
+            
+            % telescope
+            data_struct.D           = obj.tel.D;
+            data_struct.cobs        = obj.tel.obstructionRatio;
+            data_struct.resolution  = obj.tel.resolution;
+            data_struct.zenith_angle= obj.parms.atm.zenithAngle;
+            data_struct.airmass     = 1/cos(data_struct.zenith_angle);
+            data_struct.pupil       = obj.tel.pupilLogical;
+            data_struct.map_ncpa    = obj.ncpa.map;
+            
+            % atmosphere
+            data_struct.wvl_atm     = obj.atm.wavelength;
+            data_struct.r0          = obj.atm.r0;
+            data_struct.L0          = obj.atm.L0;
+            data_struct.cn2_alt     = [obj.atm.layer.altitude];
+            data_struct.cn2_weight  = [obj.atm.layer.fractionnalR0];
+            data_struct.wind_speed  = [obj.atm.layer.windSpeed];
+            data_struct.wind_dir    = [obj.atm.layer.windDirection];
+            
+            % camera
+            data_struct.psf         = obj.psf.image;
+            data_struct.strehl      = obj.cam.strehl;
+            data_struct.cam_psInMas = obj.psf.pixelScaleInMas;
+            tmp                     = obj.cam.imgLens.pixelScale(obj.sci(1),obj.tel); %recalculate the true pixel scale
+            data_struct.cam_psInMas = tmp.MAS;
+
+            data_struct.cam_fov     = obj.psf.psfFieldOfView/obj.psf.pixelScaleInMas;
+            data_struct.cam_ittime  = obj.psf.exposureTime;
+            data_struct.cam_ron     = obj.cam.readOutNoise;
+            
+            % sources
+            data_struct.src_wvl     = obj.sci.wavelength;
+            data_struct.src_zenith  = obj.sci.zenith;
+            data_struct.src_azimuth = obj.sci.azimuth;
+            
+            if isfield(obj,'lGs')
+                data_struct.lgs_wvl     = obj.lGs.wavelength;
+                data_struct.lgs_zenith  = obj.lGs.zenith;
+                data_struct.lgs_azimuth = obj.lGs.azimuth;
+                data_struct.lgs_height  = obj.lGs.height;
+            else
+                data_struct.lgs_wvl     = [];
+                data_struct.lgs_zenith  = [];
+                data_struct.lgs_azimuth = [];
+                data_struct.lgs_height  = [];
+            end
+            
+            data_struct.ngs_wvl     = obj.nGs.wavelength;
+            data_struct.ngs_zenith  = obj.nGs.zenith;
+            data_struct.ngs_azimuth = obj.nGs.azimuth;
+            
+            % ho wfss
+            data_struct.wfs_psInMas = obj.wfs.camera.pixelScale * constants.radian2mas;
+            data_struct.wfs_fov     = obj.wfs.camera.resolution(1);
+            data_struct.wfs_ron     = obj.wfs.camera.readOutNoise;
+            data_struct.wfs_nsubap  = obj.wfs.lenslets.nLenslet;
+            data_struct.wfs_dsub    = obj.parms.dm.pitch;
+            data_struct.wfs_nslopes = obj.wfs.nSlope;
+            data_struct.wfs_nexp    = obj.cam.exposureTime/obj.wfs.camera.clockRate;
+            data_struct.wfs_slopes  = squeeze(obj.loopData.slopes);
+            
+            if obj.wfs.centroiding
+                data_struct.wfs_algo  = 'cog';
+            elseif obj.wfs.brightestPixel
+                data_struct.wfs_algo = 'brightest';
+            elseif obj.wfs.correlation
+                data_struct.wfs_algo = 'correlation';
+            end
+            
+            % dms
+            data_struct.dm_nactu    = obj.parms.dm.nActuators;
+            data_struct.dm_pitch    = obj.parms.dm.pitch;
+            data_struct.dm_com      = squeeze(obj.loopData.dmcom);
+            data_struct.dm_validactu= obj.dm.validActuator;
+            data_struct.dm_ncom     = obj.dm.nValidActuator;
+            data_struct.dm_coupling = obj.dm.modes.mechCoupling;
+            data_struct.dm_height   = obj.dm.zLocation;
+            
+            % tiptilt
+            if isfield(obj,'lowfs')
+                data_struct.tt_psInMas = obj.lowfs.camera.pixelScale * constants.radian2mas;
+                data_struct.tt_fov     = obj.lowfs.camera.resolution(1);
+                data_struct.tt_ron     = obj.lowfs.camera.readOutNoise;
+                data_struct.tt_nexp    = obj.cam.exposureTime/obj.lowfs.camera.clockRate;
+               
+                if obj.lowfs.centroiding
+                    data_struct.tt_algo  = 'cog';
+                elseif obj.lowfs.brightestPixel
+                    data_struct.tt_algo = 'brightest';
+                elseif obj.lowfs.correlation
+                    data_struct.tt_algo = 'correlation';
+                end
+            end
+            data_struct.tt_slopes  = squeeze(obj.loopData.tiptilt);
+            data_struct.tt_com     = squeeze(obj.loopData.tiltCom);
+            
+            %  system matrices
+            data_struct.mat_rec     = obj.wfs2dm.M;
+            data_struct.mat_dmttrem = obj.matrices.DMTTRem;
+            data_struct.mat_slttrem = obj.matrices.SlopeTTRem;
+            data_struct.mat_tt2com  = obj.matrices.tilt2Commands;
+            data_struct.mat_sl2tt   = obj.matrices.slopes2Tilt;
+            data_struct.mat_com2tt  = obj.matrices.commands2Tilt;
+            data_struct.mat_dmfilter= obj.matrices.dmFilter;
+
+            if ~isfield(obj.parms.dm,'influenceCentre')
+                obj.parms.dm.influenceCentre = [0,0];
+            end
+            
+            switch obj.parms.dm.influenceType
+                
+                case 'gaussian'
+                    bif = gaussianInfluenceFunction(obj.parms.dm.crossCoupling,obj.parms.dm.pitch);
+                    
+                case 'monotonic'
+                    bif = influenceFunction('monotonic',obj.parms.dm.crossCoupling,obj.parms.dm.influenceCentre);
+                    
+                case 'overshoot'
+                    bif = influenceFunction('overshoot',obj.parms.dm.crossCoupling,obj.parms.dm.influenceCentre);
+                    
+                otherwise
+                    bif = influenceFunction(obj.parms.influencePoints,obj.parms.dm.crossCoupling,obj.parms.dm.influenceCentre);
+            end
+            
+            dm_lo  = deformableMirror(obj.parms.dm.nActuators,'modes',bif,...
+                'resolution',obj.tel.resolution,'validActuator',obj.dm.validActuator);
+            
+            data_struct.mat_dmif    = dm_lo.modes.modes;
+            
+            % transfer function
+            data_struct.lat_ho  = obj.loopStatus.ho.latency;
+            data_struct.gain_ho = obj.loopStatus.ho.gain;
+            data_struct.rate_ho = 1.0/obj.loopStatus.ho.frameRate/obj.tel.samplingTime;
+            if isfield(obj.loopStatus,'tt')
+                data_struct.lat_tt  = obj.loopStatus.tt.latency;
+                data_struct.gain_tt = obj.loopStatus.tt.gain;
+                data_struct.rate_tt = 1.0/obj.loopStatus.tt.frameRate/obj.tel.samplingTime;
+            else
+                data_struct.lat_tt  = obj.loopStatus.ho.latency;
+                data_struct.gain_tt = obj.loopStatus.ho.gain;
+                data_struct.rate_tt = 1.0/obj.loopStatus.ho.frameRate/obj.tel.samplingTime;
+            end
+            
+            save(obj.path_save,'data_struct')
+        end
     end
     
     
@@ -771,9 +936,9 @@ classdef aoSystem < handle
             +wfs;
             
             %3/ Calibrate the WFS optical gain
-            pixelScale      = wfs.lenslets.nyquistSampling*wfs.lenslets.fieldStopSize*lond/parmsWfs.nPx;
-            wfs.slopesUnits = calibrateWfsPixelScale(wfs,src,pixelScale,parmsWfs.nPx);
-            fprintf('WFS pixel scale set to %4.2f arcsec/pixel\n',pixelScale);
+            wfs.camera.pixelScale      = wfs.lenslets.nyquistSampling*wfs.lenslets.fieldStopSize*lond/parmsWfs.nPx/constants.radian2mas;
+            wfs.slopesUnits = calibrateWfsPixelScale(wfs,src,wfs.camera.pixelScale,parmsWfs.nPx);
+            fprintf('WFS pixel scale set to %4.2f mas/pixel\n',wfs.camera.pixelScale);
             
         end
         
