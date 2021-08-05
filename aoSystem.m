@@ -918,7 +918,7 @@ classdef aoSystem < handle
             
             %1/ Define the WFS class
             lond       = parmsWfs.nLenslet*constants.radian2mas*src.photometry.wavelength/tel.D;
-            samp       = lond/parmsWfs.pixelScale; % samp = 1 -> Nyquist sampling
+            samp       = lond/parmsWfs.pixelScale/2; % samp = 1 -> Nyquist sampling
             resolution = parmsWfs.nLenslet*parmsWfs.nPx;
             fov        = parmsWfs.pixelScale*parmsWfs.nLenslet/lond; % fov in lambda/D units
             
@@ -937,7 +937,7 @@ classdef aoSystem < handle
             
             %3/ Calibrate the WFS optical gain
             wfs.camera.pixelScale      = wfs.lenslets.nyquistSampling*wfs.lenslets.fieldStopSize*lond/parmsWfs.nPx/constants.radian2mas;
-            wfs.slopesUnits = calibrateWfsPixelScale(wfs,src,wfs.camera.pixelScale,parmsWfs.nPx);
+            wfs.slopesUnits = calibrateWfsPixelScale(wfs,src,wfs.camera.pixelScale*constants.radian2mas,parmsWfs.nPx);
             fprintf('WFS pixel scale set to %4.2f mas/pixel\n',wfs.camera.pixelScale);
             
         end
